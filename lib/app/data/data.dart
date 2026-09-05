@@ -4,6 +4,7 @@ export 'initialize.dart';
 export 'link.dart';
 export 'navigation.dart';
 export 'notification.dart';
+export 'preferences_backup.dart';
 export 'storage.dart';
 export 'storage.drift.dart';
 export 'task.dart';

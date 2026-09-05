@@ -28,9 +28,9 @@ class CommentTile extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8, top: 4),
-                    child: Icon(Icons.person),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8, top: 4),
+                    child: UserIdAvatar(userId: comment.creatorId, radius: 16),
                   ),
                   Expanded(
                     child: Column(
@@ -39,9 +39,20 @@ class CommentTile extends StatelessWidget {
                         CommentHeader(comment: comment),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [Expanded(child: DText(comment.body))],
+                          children: [
+                            Expanded(
+                              child: TranslationOriginal(
+                                category: TranslationCategory.comment,
+                                entry: translation,
+                                original: DText(comment.body),
+                              ),
+                            ),
+                          ],
                         ),
-                        TranslationDisplay(entry: translation),
+                        TranslationDisplay(
+                          entry: translation,
+                          category: TranslationCategory.comment,
+                        ),
                       ],
                     ),
                   ),

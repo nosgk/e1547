@@ -37,16 +37,33 @@ class TopicRepliesPage extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      topic.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    TranslationOriginal(
+                      category: TranslationCategory.topicTitle,
+                      entry: translation,
+                      original: Text(
+                        topic.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      replacementBuilder: (context, text) => Text(
+                        text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    TranslationDisplay(entry: translation, compact: true),
+                    TranslationDisplay(
+                      entry: translation,
+                      compact: true,
+                      category: TranslationCategory.topicTitle,
+                    ),
                   ],
                 ),
                 actions: [
-                  TranslationButton(entry: translation, compact: true),
+                  TranslationButton(
+                    entry: translation,
+                    compact: true,
+                    category: TranslationCategory.topicTitle,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.info_outline),
                     tooltip: 'Info'.tr,

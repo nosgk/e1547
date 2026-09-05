@@ -4,6 +4,7 @@ import 'package:e1547/post/post.dart';
 import 'package:e1547/query/query.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/traits/data/client.dart';
+import 'package:e1547/user/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_sub/flutter_sub.dart';
@@ -33,12 +34,16 @@ class UserAvatar extends StatelessWidget {
     required this.userId,
     required this.hasCroppedAvatar,
     this.radius = 20,
+    this.onTap,
   });
 
   final int? id;
   final int userId;
   final bool hasCroppedAvatar;
   final double radius;
+
+  /// Custom tap behavior; defaults to opening the avatar post.
+  final VoidCallback? onTap;
 
   String? _resolve(Post? post) {
     if (post == null) return null;
@@ -70,13 +75,56 @@ class UserAvatar extends StatelessWidget {
         return Avatar(
           _resolve(post),
           radius: radius,
-          onTap: post == null
-              ? null
-              : () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => PostDetail(post: post),
-                  ),
+          onTap: onTap ?? _openPost(context, post),
+        );
+      },
+    );
+  }
+
+  VoidCallback? _openPost(BuildContext context, Post? post) {
+    if (post == null) return null;
+    return () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => PostDetail(post: post)));
+  }
+}
+
+/// Avatar of the user with [userId], fetched on demand (cached by the query
+/// layer). Falls back to the empty avatar while loading or when the user
+/// has no avatar. Used wherever only a user id is known (comments, forum).
+class UserIdAvatar extends StatelessWidget {
+  const UserIdAvatar({
+    super.key,
+    required this.userId,
+    this.radius = 20,
+    this.onTap,
+  });
+
+  final int userId;
+  final double radius;
+
+  /// Custom tap behavior; defaults to opening the user's page.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final client = context.watch<Client>();
+    return QueryBuilder(
+      query: client.users.useGet(id: userId, vendored: true),
+      builder: (context, state) {
+        final user = state.data;
+        return UserAvatar(
+          id: user?.avatarId,
+          userId: userId,
+          hasCroppedAvatar: user?.hasCroppedAvatar ?? false,
+          radius: radius,
+          onTap:
+              onTap ??
+              () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => UserLoadingPage(userId),
                 ),
+              ),
         );
       },
     );

@@ -138,11 +138,21 @@ class _PoolTileTextState extends State<_PoolTileText> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  tagToName(widget.pool.name),
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                  maxLines: 1,
+                child: TranslationOriginal(
+                  category: TranslationCategory.pool,
+                  entry: title,
+                  original: Text(
+                    tagToName(widget.pool.name),
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 1,
+                  ),
+                  replacementBuilder: (context, text) => Text(
+                    text,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 1,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
@@ -154,7 +164,11 @@ class _PoolTileTextState extends State<_PoolTileText> {
             ],
           ),
         ),
-        TranslationDisplay(entry: title, compact: true),
+        TranslationDisplay(
+          entry: title,
+          compact: true,
+          category: TranslationCategory.pool,
+        ),
         if (description != null)
           Padding(
             padding: const EdgeInsets.all(8),
@@ -163,8 +177,16 @@ class _PoolTileTextState extends State<_PoolTileText> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DText(widget.pool.description),
-                  TranslationDisplay(entry: description, compact: true),
+                  TranslationOriginal(
+                    category: TranslationCategory.pool,
+                    entry: description,
+                    original: DText(widget.pool.description),
+                  ),
+                  TranslationDisplay(
+                    entry: description,
+                    compact: true,
+                    category: TranslationCategory.pool,
+                  ),
                 ],
               ),
             ),

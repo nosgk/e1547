@@ -7,6 +7,7 @@ import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:e1547/ticket/ticket.dart';
 import 'package:e1547/traits/traits.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:e1547/user/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -381,7 +382,28 @@ class UserInfo extends StatelessWidget {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    child: DText(bio),
+                    child: TranslatableHost(
+                      text: bio,
+                      builder: (context, translation) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TranslationOriginal(
+                            category: TranslationCategory.userProfile,
+                            entry: translation,
+                            original: DText(bio),
+                          ),
+                          TranslationDisplay(
+                            entry: translation,
+                            category: TranslationCategory.userProfile,
+                          ),
+                          TranslationButton(
+                            entry: translation,
+                            category: TranslationCategory.userProfile,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

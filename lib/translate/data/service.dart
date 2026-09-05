@@ -18,8 +18,10 @@ class TranslationProbe {
     this.elapsedMs = 0,
     this.parsed,
     this.rawBody,
+    this.responseHeaders,
     this.error,
     this.errorDetail,
+    this.requestMethod,
     this.requestUrl,
     this.requestHeaders = const {},
     this.requestBody,
@@ -37,6 +39,10 @@ class TranslationProbe {
   /// Raw response body, for inspection.
   final String? rawBody;
 
+  /// Raw response headers ("HTTP 200 OK" plus one "key: value" per line),
+  /// when a response arrived.
+  final String? responseHeaders;
+
   /// User-presentable error message, on failure.
   final String? error;
 
@@ -44,6 +50,7 @@ class TranslationProbe {
   final String? errorDetail;
 
   /// The exact request that was sent.
+  final String? requestMethod;
   final String? requestUrl;
   final Map<String, String> requestHeaders;
   final String? requestBody;
@@ -81,6 +88,8 @@ class TranslationService {
   int _maxConcurrency = kDefaultTranslateConcurrency;
   int _intervalMs = kDefaultTranslateIntervalMs;
   int _timeoutSeconds = kDefaultTranslateTimeoutSeconds;
+  int _maxTextLength = kDefaultTranslateMaxTextLength;
+  int _maxParagraphs = kDefaultTranslateMaxParagraphs;
 
   int _inFlight = 0;
   final List<Completer<void>> _slotWaiters = [];
@@ -98,6 +107,14 @@ class TranslationService {
   int get requestTimeoutSeconds => _timeoutSeconds;
   set requestTimeoutSeconds(int value) =>
       _timeoutSeconds = value < 1 ? kDefaultTranslateTimeoutSeconds : value;
+
+  /// Maximum characters sent in one request; 0 = unlimited.
+  int get maxTextLength => _maxTextLength;
+  set maxTextLength(int value) => _maxTextLength = value < 0 ? 0 : value;
+
+  /// Maximum newline-separated paragraphs per request; 0 = unlimited.
+  int get maxParagraphs => _maxParagraphs;
+  set maxParagraphs(int value) => _maxParagraphs = value < 0 ? 0 : value;
 
   Duration get _timeout => Duration(seconds: _timeoutSeconds);
 
@@ -216,6 +233,8 @@ class TranslationService {
         elapsedMs: watch.elapsedMilliseconds,
         parsed: parsed,
         rawBody: log.rawBody,
+        responseHeaders: log.responseHeaders,
+        requestMethod: log.requestMethod,
         requestUrl: log.requestUrl,
         requestHeaders: log.requestHeaders ?? const {},
         requestBody: log.requestBody,
@@ -226,8 +245,10 @@ class TranslationService {
         status: log.status ?? error.code,
         elapsedMs: watch.elapsedMilliseconds,
         rawBody: log.rawBody,
+        responseHeaders: log.responseHeaders,
         error: error.message,
         errorDetail: error.detail,
+        requestMethod: log.requestMethod,
         requestUrl: log.requestUrl,
         requestHeaders: log.requestHeaders ?? const {},
         requestBody: log.requestBody,
@@ -238,7 +259,9 @@ class TranslationService {
         status: log.status,
         elapsedMs: watch.elapsedMilliseconds,
         rawBody: log.rawBody,
+        responseHeaders: log.responseHeaders,
         error: '$error',
+        requestMethod: log.requestMethod,
         requestUrl: log.requestUrl,
         requestHeaders: log.requestHeaders ?? const {},
         requestBody: log.requestBody,
@@ -291,18 +314,31 @@ class TranslationService {
     final contentType = profile.effectiveContentType();
     if (contentType != null) headers['Content-Type'] = contentType;
 
-    // GET URLs are length limited; long texts are split on line/sentence
-    // boundaries and translated chunk by chunk.
-    final chunks = profile.isGet ? splitForUrl(text, 1200) : [text];
+    // Split the text so each request stays within the configured limits
+    // (URL length for GET, user-configured text length and paragraph
+    // count). Tag translations skip splitting: one tag per request.
+    final chunks = config.singleRequest
+        ? [text]
+        : splitText(
+            text,
+            maxChars: _maxTextLength > 0 ? _maxTextLength : null,
+            maxParagraphs: _maxParagraphs,
+            maxEncoded: profile.isGet ? 1200 : null,
+          );
     final parts = <String>[];
     try {
       for (final chunk in chunks) {
+        if (chunk.trim().isEmpty) {
+          parts.add(chunk);
+          continue;
+        }
         final chunkVars = {...vars, 'text': chunk};
         final url = buildRequestUrl(profile, chunkVars);
         final body = profile.isGet
             ? null
             : renderJsonTemplate(profile.body, chunkVars);
         if (log != null) {
+          log.requestMethod = profile.isGet ? 'GET' : 'POST';
           log.requestUrl = url;
           log.requestHeaders = Map.of(headers);
           log.requestBody = body;
@@ -324,6 +360,7 @@ class TranslationService {
           if (log != null) {
             log.status = response.statusCode;
             log.rawBody = _responseBody(response);
+            log.responseHeaders = _rawResponseHeaders(response);
           }
           _validateStatus(response);
           parts.add(_extractTranslation(response, profile));
@@ -407,34 +444,89 @@ class TranslationService {
     }
   }
 
-  /// Splits [text] into chunks whose percent-encoded form stays well below
-  /// common URL length limits, preferring line and sentence boundaries.
-  /// Separators stay attached to the end of each chunk so joining the
-  /// translated chunks preserves the original layout.
+  /// Raw response headers as a text block: status line plus one
+  /// "key: value" line per header, for the probe panel.
+  String _rawResponseHeaders(Response response) {
+    final buffer = StringBuffer();
+    final status = response.statusCode;
+    if (status != null) {
+      final message = response.statusMessage?.trim() ?? '';
+      buffer.writeln(
+        message.isEmpty ? 'HTTP $status' : 'HTTP $status $message',
+      );
+    }
+    response.headers.map.forEach((key, values) {
+      buffer.writeln('$key: ${values.join(', ')}');
+    });
+    return buffer.toString().trim();
+  }
+
+  /// Splits [text] into chunks for translation requests. Each chunk spans
+  /// at most [maxChars] characters (when set), at most [maxParagraphs]
+  /// newline-separated paragraphs (when > 0) and — via [maxEncoded] — stays
+  /// below that percent-encoded length (GET URL limit). Paragraph
+  /// boundaries are preferred break points; separators stay attached to the
+  /// end of each chunk so joining the translated chunks preserves the
+  /// original layout.
   @visibleForTesting
-  static List<String> splitForUrl(String text, int limit) {
-    if (Uri.encodeComponent(text).length <= limit) return [text];
+  static List<String> splitText(
+    String text, {
+    int? maxChars,
+    int maxParagraphs = 0,
+    int? maxEncoded,
+  }) {
+    if (maxChars == null && maxEncoded == null && maxParagraphs <= 0) {
+      return [text];
+    }
+    bool rawOver(String value) => maxChars != null && value.length > maxChars;
+    bool encodedOver(String value) =>
+        maxEncoded != null && Uri.encodeComponent(value).length > maxEncoded;
+
     final chunks = <String>[];
     final pending = <String>[];
     for (final line in text.split('\n')) {
-      if (pending.isNotEmpty &&
-          Uri.encodeComponent('${pending.join('\n')}\n$line').length > limit) {
-        chunks.add('${pending.join('\n')}\n');
-        pending.clear();
+      if (pending.isNotEmpty) {
+        final candidate = '${pending.join('\n')}\n$line';
+        final tooMany = maxParagraphs > 0 && pending.length >= maxParagraphs;
+        if (rawOver(candidate) || encodedOver(candidate) || tooMany) {
+          chunks.add('${pending.join('\n')}\n');
+          pending.clear();
+        }
       }
       var remaining = line;
-      while (Uri.encodeComponent(remaining).length > limit) {
-        var cut = limit;
-        final window = remaining.substring(0, cut);
-        final lastSpace = window.lastIndexOf(' ');
-        if (lastSpace > limit ~/ 2) cut = lastSpace + 1;
+      while (rawOver(remaining) || encodedOver(remaining)) {
+        var cut = remaining.length;
+        if (maxChars != null && cut > maxChars) cut = maxChars;
+        if (maxEncoded != null) {
+          final fit = _maxEncodedPrefix(remaining, maxEncoded);
+          if (fit < cut) cut = fit;
+        }
+        if (cut < 1) cut = 1;
         chunks.add(remaining.substring(0, cut));
         remaining = remaining.substring(cut);
       }
-      if (remaining.isNotEmpty) pending.add(remaining);
+      pending.add(remaining);
     }
     if (pending.isNotEmpty) chunks.add(pending.join('\n'));
-    return chunks;
+    return chunks.where((chunk) => chunk.isNotEmpty).toList();
+  }
+
+  /// Length of the longest prefix of [value] whose percent-encoded form
+  /// fits within [maxEncoded]. Always at least 1.
+  static int _maxEncodedPrefix(String value, int maxEncoded) {
+    var lo = 1;
+    var hi = value.length;
+    var best = 1;
+    while (lo <= hi) {
+      final mid = (lo + hi) >> 1;
+      if (Uri.encodeComponent(value.substring(0, mid)).length <= maxEncoded) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return best;
   }
 
   void _validateStatus(Response response) {
@@ -497,6 +589,8 @@ class TranslationService {
 class _ProbeLog {
   int? status;
   String? rawBody;
+  String? responseHeaders;
+  String? requestMethod;
   String? requestUrl;
   Map<String, String>? requestHeaders;
   String? requestBody;

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/translate/translate.dart';
@@ -120,6 +122,25 @@ class _AdvancedRequestSettingsPageState
     );
   }
 
+  /// Opens a plain-text (JSON) editor for the whole request profile.
+  /// Saving parses the text back into a profile and applies it.
+  Future<void> _editAsText() async {
+    final initial = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(_profile.toJson());
+    final controller = TextEditingController(text: initial);
+    final result = await showDialog<TranslationRequestProfile>(
+      context: context,
+      builder: (context) => _PlainTextProfileDialog(controller: controller),
+    );
+    controller.dispose();
+    if (result == null) return;
+    _url.text = result.url;
+    _body.text = result.body;
+    _parse.text = result.parsePath;
+    _update(result);
+  }
+
   TextEditingController? get focusedController => _lastFocused;
 
   set focusedController(TextEditingController controller) {
@@ -183,6 +204,11 @@ class _AdvancedRequestSettingsPageState
           title: Text('API Request Configuration'.tr),
           actions: [
             IconButton(
+              tooltip: 'Edit as plain text'.tr,
+              icon: const Icon(Icons.data_object),
+              onPressed: _editAsText,
+            ),
+            IconButton(
               tooltip: 'Restore defaults'.tr,
               icon: const Icon(Icons.restore),
               onPressed: _restorePreset,
@@ -227,6 +253,21 @@ class _AdvancedRequestSettingsPageState
               onChanged: (value) =>
                   context.read<Settings>().translateTimeoutSeconds.value =
                       value,
+            ),
+            _NumberSettingTile(
+              label: 'Max text length per request'.tr,
+              subtitle: 'Characters sent in one request; 0 = unlimited'.tr,
+              value: context.read<Settings>().translateMaxTextLength.value,
+              onChanged: (value) =>
+                  context.read<Settings>().translateMaxTextLength.value = value,
+            ),
+            _NumberSettingTile(
+              label: 'Max paragraphs per request'.tr,
+              subtitle:
+                  'Newline-separated paragraphs per request; 0 = unlimited'.tr,
+              value: context.read<Settings>().translateMaxParagraphs.value,
+              onChanged: (value) =>
+                  context.read<Settings>().translateMaxParagraphs.value = value,
             ),
             const Divider(),
             _sectionHeader('Request'.tr),
@@ -563,9 +604,11 @@ class _NumberSettingTile extends StatefulWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.subtitle,
   });
 
   final String label;
+  final String? subtitle;
   final int value;
   final ValueChanged<int> onChanged;
 
@@ -597,6 +640,14 @@ class _NumberSettingTileState extends State<_NumberSettingTile> {
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(widget.label),
+      subtitle: widget.subtitle == null
+          ? null
+          : Text(
+              widget.subtitle!,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+            ),
       trailing: SizedBox(
         width: 110,
         child: TextField(
@@ -883,14 +934,22 @@ class _ProbeCard extends StatelessWidget {
           if (probe.rawBody != null && probe.rawBody!.trim().isNotEmpty)
             _detailTile(
               context,
-              title: 'Raw response'.tr,
+              title: 'Raw response body'.tr,
               content: probe.rawBody!,
+            ),
+          if (probe.responseHeaders != null &&
+              probe.responseHeaders!.trim().isNotEmpty)
+            _detailTile(
+              context,
+              title: 'Raw response headers'.tr,
+              content: probe.responseHeaders!,
             ),
           _detailTile(
             context,
-            title: 'Sent request'.tr,
+            title: 'Raw request headers'.tr,
             content: [
-              if (probe.requestUrl != null) probe.requestUrl!,
+              if (probe.requestUrl != null)
+                '${probe.requestMethod ?? ''} ${probe.requestUrl!}'.trim(),
               for (final entry in probe.requestHeaders.entries)
                 '${entry.key}: ${entry.value}',
               if (probe.requestBody != null) ...['', probe.requestBody!],
@@ -928,4 +987,123 @@ class _ProbeCard extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// Plain-text (JSON) editor for a [TranslationRequestProfile], used by the
+/// configurator's "edit as plain text" action. Save stays disabled until
+/// the text parses as a JSON object.
+class _PlainTextProfileDialog extends StatelessWidget {
+  const _PlainTextProfileDialog({required this.controller});
+
+  final TextEditingController controller;
+
+  (String?, TranslationRequestProfile?) _tryParse(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return ('empty', null);
+    }
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is! Map) {
+        return ('not a JSON object', null);
+      }
+      return (
+        null,
+        TranslationRequestProfile.fromJson(decoded.cast<String, dynamic>()),
+      );
+    } on FormatException catch (error) {
+      return (error.message, null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Edit as plain text'.tr),
+      scrollable: true,
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (context, value, child) {
+            final (error, profile) = _tryParse(value.text);
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: controller,
+                  minLines: 12,
+                  maxLines: 20,
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                  ),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    children: [
+                      Icon(
+                        error == null
+                            ? Icons.check_circle
+                            : Icons.error_outline,
+                        size: 16,
+                        color: error == null
+                            ? Colors.green
+                            : Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          error ?? 'JSON valid'.tr,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: error == null
+                                    ? dimTextColor(context)
+                                    : Theme.of(context).colorScheme.error,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            final formatted = formatJsonBody(controller.text);
+            controller.value = TextEditingValue(
+              text: formatted,
+              selection: TextSelection.collapsed(offset: formatted.length),
+            );
+          },
+          child: Text('Format'.tr),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('CANCEL'.tr),
+        ),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (context, value, child) {
+            final (_, profile) = _tryParse(value.text);
+            return FilledButton(
+              onPressed: profile == null
+                  ? null
+                  : () => Navigator.of(context).pop(profile),
+              child: Text('Save'.tr),
+            );
+          },
+        ),
+      ],
+    );
+  }
 }

@@ -45,6 +45,17 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                     context.read<Settings>().translateAuto.value = value,
               ),
             ),
+            ValueListenableBuilder<bool>(
+              valueListenable: context.read<Settings>().translateTagsAuto,
+              builder: (context, value, child) => SwitchListTile(
+                title: Text('Tag automatic translation'.tr),
+                subtitle: Text('Translate tag names when they are shown'.tr),
+                secondary: const Icon(Icons.sell_outlined),
+                value: value,
+                onChanged: (value) =>
+                    context.read<Settings>().translateTagsAuto.value = value,
+              ),
+            ),
             ValueListenableBuilder<String>(
               valueListenable: context.read<Settings>().translateTargetLanguage,
               builder: (context, value, child) => ListTile(
@@ -68,6 +79,25 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                 onTap: () => _pickProvider(context, value),
               ),
             ),
+            SectionHeader(
+              indent: SectionHeader.listTileIndent,
+              title: 'Display effect'.tr,
+            ),
+            for (final category in TranslationCategory.values)
+              ValueListenableBuilder<String>(
+                valueListenable: context.read<Settings>().translateDisplayModes,
+                builder: (context, value, child) => ListTile(
+                  title: Text(category.label.tr),
+                  subtitle: Text(
+                    translationDisplayModeOf(
+                      context.read<Settings>(),
+                      category,
+                    ).label.tr,
+                  ),
+                  leading: const Icon(Icons.visibility_outlined),
+                  onTap: () => _pickDisplayMode(context, category),
+                ),
+              ),
             const Divider(),
             ValueListenableBuilder<TranslationProvider>(
               valueListenable: context.read<Settings>().translateProvider,
@@ -157,6 +187,37 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _pickDisplayMode(
+    BuildContext context,
+    TranslationCategory category,
+  ) async {
+    final settings = context.read<Settings>();
+    await showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(category.label.tr),
+        children: [
+          for (final mode in TranslationDisplayMode.values)
+            ListTile(
+              title: Text(mode.label.tr),
+              subtitle: Text(
+                mode == TranslationDisplayMode.bilingual
+                    ? 'Show the original and the translation'.tr
+                    : 'Replace the original with the translation'.tr,
+              ),
+              trailing: translationDisplayModeOf(settings, category) == mode
+                  ? const Icon(Icons.check)
+                  : null,
+              onTap: () {
+                setTranslationDisplayMode(settings, category, mode);
+                Navigator.of(context).maybePop();
+              },
+            ),
+        ],
       ),
     );
   }

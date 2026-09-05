@@ -10,11 +10,16 @@ import 'package:flutter/material.dart';
 /// Builds a [TranslationConfig] from the current settings values, falling
 /// back to defaults for empty optional fields. Also applies the configured
 /// performance & rate limiting controls to the service.
-TranslationConfig translationConfigFromSettings(Settings settings) {
+TranslationConfig translationConfigFromSettings(
+  Settings settings, {
+  bool singleRequest = false,
+}) {
   final service = TranslationService.instance;
   service.maxConcurrency = settings.translateConcurrency.value;
   service.requestIntervalMs = settings.translateIntervalMs.value;
   service.requestTimeoutSeconds = settings.translateTimeoutSeconds.value;
+  service.maxTextLength = settings.translateMaxTextLength.value;
+  service.maxParagraphs = settings.translateMaxParagraphs.value;
   final provider = settings.translateProvider.value;
   return TranslationConfig(
     provider: provider,
@@ -25,6 +30,7 @@ TranslationConfig translationConfigFromSettings(Settings settings) {
     systemPrompt: settings.translateSystemPrompt.value,
     userPrompt: settings.translateUserPrompt.value,
     azureApiKey: settings.translateAzureKey.value,
+    singleRequest: singleRequest,
     profile: profileFromSettings(settings, provider),
   );
 }
@@ -102,6 +108,67 @@ ValueListenable<bool>? tryTranslationEnabledOf(BuildContext context) {
   }
 }
 
+/// Reads the Settings from the widget tree, or null when there is no
+/// provider above this context (tests, standalone hosts).
+Settings? trySettingsOf(BuildContext context) {
+  try {
+    return context.read<Settings>();
+  } on Object {
+    return null;
+  }
+}
+
+/// Reads the display mode configured for [category]. Bilingual when no
+/// settings are available or the category has no stored entry.
+TranslationDisplayMode translationDisplayModeOf(
+  Settings? settings,
+  TranslationCategory category,
+) {
+  if (settings == null) return TranslationDisplayMode.bilingual;
+  try {
+    final decoded = jsonDecode(settings.translateDisplayModes.value);
+    if (decoded is Map && decoded[category.name] == 'translationOnly') {
+      return TranslationDisplayMode.translationOnly;
+    }
+  } on FormatException {
+    // Fall through to the default.
+  }
+  return TranslationDisplayMode.bilingual;
+}
+
+/// Stores the display mode of [category]. Bilingual is stored as "absent"
+/// (it is the default).
+void setTranslationDisplayMode(
+  Settings settings,
+  TranslationCategory category,
+  TranslationDisplayMode mode,
+) {
+  Map<String, dynamic> modes = {};
+  try {
+    final decoded = jsonDecode(settings.translateDisplayModes.value);
+    if (decoded is Map) modes = decoded.cast<String, dynamic>();
+  } on FormatException {
+    // Start over with an empty map.
+  }
+  if (mode == TranslationDisplayMode.bilingual) {
+    modes.remove(category.name);
+  } else {
+    modes[category.name] = mode.name;
+  }
+  settings.translateDisplayModes.value = jsonEncode(modes);
+}
+
+/// Whether the translation of [category] replaces its original text in this
+/// context ("translation only" display mode).
+bool translationReplacesOriginal(
+  BuildContext context,
+  TranslationCategory? category,
+) {
+  if (category == null) return false;
+  return translationDisplayModeOf(trySettingsOf(context), category) ==
+      TranslationDisplayMode.translationOnly;
+}
+
 void translateEntry(BuildContext context, TranslationEntry entry) {
   final ValueListenable<bool>? enabledListenable = tryTranslationEnabledOf(
     context,
@@ -145,24 +212,45 @@ String localizedTranslationError(String error) {
 /// Creates a translation entry for [text], starting auto translation if the
 /// settings ask for it. For custom multi-entry layouts; prefer
 /// [TranslatableHost] for the common single-text case.
-TranslationEntry createTranslationEntry(BuildContext context, String text) {
+///
+/// [auto] overrides the global auto-translation switch (tag translation
+/// passes true when its page toggle is on). [singleRequest] sends the text
+/// in one request without splitting.
+TranslationEntry createTranslationEntry(
+  BuildContext context,
+  String text, {
+  bool? auto,
+  bool singleRequest = false,
+}) {
   final entry = TranslationEntry(text: text);
-  _maybeAutoTranslateEntry(context, entry);
+  _maybeAutoTranslateEntry(
+    context,
+    entry,
+    auto: auto,
+    singleRequest: singleRequest,
+  );
   return entry;
 }
 
-void _maybeAutoTranslateEntry(BuildContext context, TranslationEntry entry) {
+void _maybeAutoTranslateEntry(
+  BuildContext context,
+  TranslationEntry entry, {
+  bool? auto,
+  bool singleRequest = false,
+}) {
   if (entry.autoAttempted) return;
   try {
     final settings = context.read<Settings>();
     if (!settings.translateEnabled.value) return;
-    if (!settings.translateAuto.value) return;
+    if (!(auto ?? settings.translateAuto.value)) return;
     if (settings.translateTargetLanguage.value.startsWith('zh') &&
         translationLooksChinese(entry.text)) {
       entry.skipAuto();
       return;
     }
-    entry.translate(translationConfigFromSettings(settings));
+    entry.translate(
+      translationConfigFromSettings(settings, singleRequest: singleRequest),
+    );
   } on Object {
     // Settings are not available in tests; auto translation is best-effort.
   }
@@ -171,18 +259,24 @@ void _maybeAutoTranslateEntry(BuildContext context, TranslationEntry entry) {
 /// Owns the [TranslationEntry] for [text] and hands it to [builder].
 ///
 /// Place this around the original text and wherever the trigger button and
-/// the translated text should appear. When auto translation is enabled, the
-/// translation starts as soon as the host mounts (once, skipping text that
-/// already looks like the target language).
+/// the translated text should appear. When auto translation is enabled (or
+/// [auto] is true), the translation starts as soon as the host mounts (once,
+/// skipping text that already looks like the target language).
 class TranslatableHost extends StatefulWidget {
   const TranslatableHost({
     super.key,
     required this.text,
     required this.builder,
+    this.auto,
+    this.singleRequest = false,
   });
 
   final String text;
   final Widget Function(BuildContext context, TranslationEntry entry) builder;
+
+  /// Overrides the global auto-translation switch; null follows the setting.
+  final bool? auto;
+  final bool singleRequest;
 
   @override
   State<TranslatableHost> createState() => _TranslatableHostState();
@@ -191,7 +285,12 @@ class TranslatableHost extends StatefulWidget {
 class _TranslatableHostState extends State<TranslatableHost> {
   TranslationEntry? _entry;
 
-  TranslationEntry _create() => createTranslationEntry(context, widget.text);
+  TranslationEntry _create() => createTranslationEntry(
+    context,
+    widget.text,
+    auto: widget.auto,
+    singleRequest: widget.singleRequest,
+  );
 
   @override
   void didChangeDependencies() {
@@ -234,10 +333,15 @@ class TranslationButton extends StatelessWidget {
     super.key,
     required this.entry,
     this.compact = false,
+    this.category,
   });
 
   final TranslationEntry entry;
   final bool compact;
+
+  /// Category of the translated content, used to honor the per-category
+  /// display mode ("translation only" shows a "show original" toggle).
+  final TranslationCategory? category;
 
   @override
   Widget build(BuildContext context) {
@@ -257,6 +361,22 @@ class TranslationButton extends StatelessWidget {
                 entry.status == TranslationStatus.success &&
                 entry.translation != null;
             if (loaded && entry.expanded && !compact) {
+              if (translationReplacesOriginal(context, category)) {
+                // The original is replaced by the translation, so the
+                // button becomes the way back to the original text.
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    onPressed: entry.collapse,
+                    icon: const Icon(Icons.keyboard_arrow_up, size: 16),
+                    label: Text('Show original'.tr),
+                  ),
+                );
+              }
               // The full display carries its own collapse control.
               return const SizedBox.shrink();
             }
@@ -345,15 +465,24 @@ class TranslationDisplay extends StatelessWidget {
     super.key,
     required this.entry,
     this.compact = false,
+    this.category,
   });
 
   final TranslationEntry entry;
   final bool compact;
 
+  /// Category of the translated content. In "translation only" display
+  /// mode the expanded translation is hidden here, because
+  /// [TranslationOriginal] already renders it in place of the original.
+  final TranslationCategory? category;
+
   @override
   Widget build(BuildContext context) {
+    final settings = trySettingsOf(context);
     return AnimatedBuilder(
-      animation: entry,
+      animation: settings == null
+          ? entry
+          : Listenable.merge([entry, settings.translateDisplayModes]),
       builder: (context, child) {
         return AnimatedSize(
           duration: defaultAnimationDuration,
@@ -367,6 +496,13 @@ class TranslationDisplay extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Whether the original spot currently shows the translation already.
+  bool _replacedByOriginal(BuildContext context) {
+    return category != null &&
+        entry.translation != null &&
+        translationReplacesOriginal(context, category);
   }
 
   Widget _error(BuildContext context) {
@@ -415,6 +551,11 @@ class TranslationDisplay extends StatelessWidget {
 
   Widget _content(BuildContext context) {
     final translation = entry.translation!;
+    if (_replacedByOriginal(context)) {
+      // The original spot already renders the translation; showing it here
+      // again would duplicate the text.
+      return const SizedBox(width: double.infinity);
+    }
     if (compact) {
       return Padding(
         padding: const EdgeInsets.only(top: 2),
@@ -464,4 +605,74 @@ class TranslationDisplay extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wraps the original content of a translatable text.
+///
+/// In "translation only" display mode, the original is replaced by the
+/// translated text as soon as the translation is expanded; in bilingual
+/// mode (and while loading / on errors) [original] renders unchanged. Pair
+/// with a [TranslationDisplay] carrying the same [category].
+class TranslationOriginal extends StatelessWidget {
+  const TranslationOriginal({
+    super.key,
+    required this.category,
+    required this.entry,
+    required this.original,
+    this.replacementBuilder,
+  });
+
+  final TranslationCategory category;
+  final TranslationEntry entry;
+  final Widget original;
+
+  /// Builds the widget shown in place of [original] while the translation
+  /// replaces it. Falls back to a [DText] rendering of the translation.
+  final Widget Function(BuildContext context, String translation)?
+  replacementBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = trySettingsOf(context);
+    if (settings == null) return original;
+    return AnimatedBuilder(
+      animation: Listenable.merge([entry, settings.translateDisplayModes]),
+      builder: (context, child) {
+        final translation = entry.translation;
+        if (translationDisplayModeOf(settings, category) ==
+                TranslationDisplayMode.translationOnly &&
+            entry.status == TranslationStatus.success &&
+            translation != null &&
+            entry.expanded) {
+          final builder = replacementBuilder;
+          return builder != null
+              ? builder(context, translation)
+              : DText(translation);
+        }
+        return original;
+      },
+    );
+  }
+}
+
+/// Scoped switch for tag translation (the gallery page toolbar toggle).
+/// Tag widgets inside the scope translate their names while [enabled] is
+/// true — independent of the global auto-translation setting.
+class TagTranslationScope extends InheritedWidget {
+  const TagTranslationScope({
+    super.key,
+    required this.enabled,
+    required super.child,
+  });
+
+  final ValueListenable<bool> enabled;
+
+  /// The scoped tag-translation switch, or null when outside any scope.
+  static ValueListenable<bool>? maybeOf(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<TagTranslationScope>()
+      ?.enabled;
+
+  @override
+  bool updateShouldNotify(TagTranslationScope oldWidget) =>
+      !identical(oldWidget.enabled, enabled);
 }

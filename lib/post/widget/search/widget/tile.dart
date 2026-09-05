@@ -470,14 +470,22 @@ class PostFeedTile extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  DText(post.description.ellipse(200)),
+                                  TranslationOriginal(
+                                    category: TranslationCategory.description,
+                                    entry: translation,
+                                    original: DText(
+                                      post.description.ellipse(200),
+                                    ),
+                                  ),
                                   TranslationDisplay(
                                     entry: translation,
                                     compact: true,
+                                    category: TranslationCategory.description,
                                   ),
                                   TranslationButton(
                                     entry: translation,
                                     compact: true,
+                                    category: TranslationCategory.description,
                                   ),
                                 ],
                               ),

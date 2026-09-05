@@ -10,89 +10,145 @@ import 'package:e1547/traits/traits.dart';
 import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
-class PoolPage extends StatelessWidget {
+class PoolPage extends StatefulWidget {
   const PoolPage({super.key, required this.pool, this.orderByOldest});
 
   final Pool pool;
   final bool? orderByOldest;
 
   @override
+  State<PoolPage> createState() => _PoolPageState();
+}
+
+class _PoolPageState extends State<PoolPage> {
+  late final ValueNotifier<bool> _tagTranslation;
+
+  @override
+  void initState() {
+    super.initState();
+    // The toolbar toggle starts from the global tag auto-translate setting.
+    _tagTranslation = ValueNotifier(
+      context.read<Settings>().translateTagsAuto.value,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tagTranslation.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final pool = widget.pool;
+    final orderByOldest = widget.orderByOldest ?? true;
     final client = context.watch<Client>();
-    final oldestFirst = orderByOldest ?? true;
     return TranslatableHost(
       text: tagToName(pool.name),
-      builder: (context, translation) => FilterControllerProvider(
-        create: (_) => PostFilter(client),
-        keys: (_) => [client],
-        child: ChangeNotifierProvider(
-          create: (_) => PostParamsController(
-            initial: PostParams(
-              tags: oldestFirst
-                  ? 'pool:${pool.id} order:pool'
-                  : 'pool:${pool.id} order:${PostOrder.newest.value}',
-            ),
-            canSearch: false,
-          ),
+      builder: (context, translation) => TagTranslationScope(
+        enabled: _tagTranslation,
+        child: FilterControllerProvider(
+          create: (_) => PostFilter(client),
+          keys: (_) => [client],
           child: ChangeNotifierProvider(
-            create: (_) => PostDisplayController(PostDisplayType.comic),
-            child: PoolHistoryConnector(
-              pool: pool,
-              child: FollowSeenConnector(
-                child: PostPageQueryBuilder(
-                  builder: (context, state, query) => SelectionLayout<Post>(
-                    items: state.data?.pages.expand((p) => p).toList(),
-                    child: AdaptiveScaffold(
-                      appBar: PostSelectionAppBar(
-                        child: DefaultAppBar(
-                          title: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                tagToName(pool.name),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              TranslationDisplay(
+            create: (_) => PostParamsController(
+              initial: PostParams(
+                tags: orderByOldest
+                    ? 'pool:${pool.id} order:pool'
+                    : 'pool:${pool.id} order:${PostOrder.newest.value}',
+              ),
+              canSearch: false,
+            ),
+            child: ChangeNotifierProvider(
+              create: (_) => PostDisplayController(PostDisplayType.comic),
+              child: PoolHistoryConnector(
+                pool: pool,
+                child: FollowSeenConnector(
+                  child: PostPageQueryBuilder(
+                    builder: (context, state, query) => SelectionLayout<Post>(
+                      items: state.data?.pages.expand((p) => p).toList(),
+                      child: AdaptiveScaffold(
+                        appBar: PostSelectionAppBar(
+                          child: DefaultAppBar(
+                            title: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TranslationOriginal(
+                                  category: TranslationCategory.pool,
+                                  entry: translation,
+                                  original: Text(
+                                    tagToName(pool.name),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  replacementBuilder: (context, text) => Text(
+                                    text,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                TranslationDisplay(
+                                  entry: translation,
+                                  compact: true,
+                                  category: TranslationCategory.pool,
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TranslationButton(
                                 entry: translation,
                                 compact: true,
+                                category: TranslationCategory.pool,
                               ),
+                              IconButton(
+                                icon: const Icon(Icons.info_outline),
+                                tooltip: 'Info'.tr,
+                                onPressed: () => showPoolPrompt(
+                                  context: context,
+                                  pool: pool,
+                                ),
+                              ),
+                              ValueListenableBuilder<bool>(
+                                valueListenable: _tagTranslation,
+                                builder: (context, value, child) {
+                                  final button = IconButton(
+                                    tooltip: 'Translate tags'.tr,
+                                    icon: const Icon(Icons.sell_outlined),
+                                    onPressed: () =>
+                                        _tagTranslation.value = !value,
+                                  );
+                                  return value ? button : Dimmed(child: button);
+                                },
+                              ),
+                              const ContextDrawerButton(),
                             ],
                           ),
-                          actions: [
-                            TranslationButton(
-                              entry: translation,
-                              compact: true,
+                        ),
+                        endDrawer: ContextDrawer(
+                          title: Text('Pool'.tr),
+                          children: [
+                            const PoolReaderSwitch(),
+                            const PoolOrderSwitch(),
+                            const DrawerDenySwitch(),
+                            DrawerTagCounter(
+                              posts: state.data?.pages
+                                  .expand((p) => p)
+                                  .toList(),
+                              error: state.error,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.info_outline),
-                              tooltip: 'Info'.tr,
-                              onPressed: () =>
-                                  showPoolPrompt(context: context, pool: pool),
-                            ),
-                            const ContextDrawerButton(),
                           ],
                         ),
-                      ),
-                      endDrawer: ContextDrawer(
-                        title: Text('Pool'.tr),
-                        children: [
-                          const PoolReaderSwitch(),
-                          const PoolOrderSwitch(),
-                          const DrawerDenySwitch(),
-                          DrawerTagCounter(
-                            posts: state.data?.pages.expand((p) => p).toList(),
-                            error: state.error,
-                          ),
-                        ],
-                      ),
-                      body: LimitedWidthLayout(
-                        child: ListenableBuilder(
-                          listenable: context.watch<Settings>().tileSize,
-                          builder: (context, child) => TileLayout(
-                            tileSize: context.watch<Settings>().tileSize.value,
-                            child: const PostList(),
+                        body: LimitedWidthLayout(
+                          child: ListenableBuilder(
+                            listenable: context.watch<Settings>().tileSize,
+                            builder: (context, child) => TileLayout(
+                              tileSize: context
+                                  .watch<Settings>()
+                                  .tileSize
+                                  .value,
+                              child: const PostList(),
+                            ),
                           ),
                         ),
                       ),

@@ -30,9 +30,9 @@ class ReplyTile extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8, top: 4),
-                      child: Icon(Icons.person),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8, top: 4),
+                      child: UserIdAvatar(userId: reply.creatorId, radius: 16),
                     ),
                     Expanded(
                       child: Column(
@@ -41,9 +41,20 @@ class ReplyTile extends StatelessWidget {
                           ReplyHeader(reply: reply),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [Expanded(child: DText(reply.body))],
+                            children: [
+                              Expanded(
+                                child: TranslationOriginal(
+                                  category: TranslationCategory.topicBody,
+                                  entry: translation,
+                                  original: DText(reply.body),
+                                ),
+                              ),
+                            ],
                           ),
-                          TranslationDisplay(entry: translation),
+                          TranslationDisplay(
+                            entry: translation,
+                            category: TranslationCategory.topicBody,
+                          ),
                         ],
                       ),
                     ),
@@ -74,7 +85,11 @@ class ReplyTile extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TranslationButton(entry: translation, compact: true),
+                    TranslationButton(
+                      entry: translation,
+                      compact: true,
+                      category: TranslationCategory.topicBody,
+                    ),
                     ReplyMenu(reply: reply),
                   ],
                 ),

@@ -67,6 +67,47 @@ const int kDefaultTranslateConcurrency = 1;
 const int kDefaultTranslateIntervalMs = 0;
 const int kDefaultTranslateTimeoutSeconds = 30;
 
+/// Maximum characters sent in one request; 0 = unlimited. GET requests are
+/// additionally capped by the URL length limit.
+const int kDefaultTranslateMaxTextLength = 1200;
+
+/// Maximum newline-separated paragraphs per request; 0 = unlimited.
+const int kDefaultTranslateMaxParagraphs = 0;
+
+/// Kinds of content that can be translated; each kind has its own display
+/// mode (bilingual vs translation-only).
+enum TranslationCategory {
+  description,
+  tag,
+  comment,
+  topicTitle,
+  topicBody,
+  pool,
+  userProfile;
+
+  /// Display name used in the settings.
+  String get label => switch (this) {
+    TranslationCategory.description => 'Post description',
+    TranslationCategory.tag => 'Tags',
+    TranslationCategory.comment => 'Comments',
+    TranslationCategory.topicTitle => 'Forum titles',
+    TranslationCategory.topicBody => 'Forum posts & replies',
+    TranslationCategory.pool => 'Gallery title & description',
+    TranslationCategory.userProfile => 'User profile',
+  };
+}
+
+/// How a translation is shown: next to its original text (bilingual) or
+/// replacing the original text once available (translation-only).
+enum TranslationDisplayMode { bilingual, translationOnly }
+
+extension TranslationDisplayModeLabel on TranslationDisplayMode {
+  String get label => switch (this) {
+    TranslationDisplayMode.bilingual => 'Bilingual',
+    TranslationDisplayMode.translationOnly => 'Translation only',
+  };
+}
+
 /// Immutable snapshot of everything the translation service needs to run.
 class TranslationConfig {
   TranslationConfig({
@@ -78,8 +119,13 @@ class TranslationConfig {
     this.systemPrompt = kDefaultTranslationSystemPrompt,
     this.userPrompt = kDefaultTranslationUserPrompt,
     this.azureApiKey = '',
+    this.singleRequest = false,
     TranslationRequestProfile? profile,
   }) : profile = profile ?? defaultRequestProfile(provider);
+
+  /// Sends the text in a single request without splitting. Used by tag
+  /// translation, which translates one tag per request.
+  final bool singleRequest;
 
   final TranslationProvider provider;
 

@@ -10,6 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:filesize/filesize.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sub/flutter_sub.dart';
+import 'package:path/path.dart';
 
 typedef DatabaseInfo = ({String name, String size});
 
@@ -108,6 +109,10 @@ class DatabaseExportTile extends StatelessWidget {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
+    final includeTranslation = await _showExportOptions(context);
+    if (includeTranslation == null) return;
+    if (!context.mounted) return;
+
     try {
       showDialog(
         context: context,
@@ -139,13 +144,60 @@ class DatabaseExportTile extends StatelessWidget {
         throw Exception('Database file does not exist');
       }
 
-      String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export Database'.tr,
-        fileName: 'e1547_database_backup.db',
-        type: FileType.custom,
-        allowedExtensions: ['db'],
-        bytes: await dbFile.readAsBytes(),
+      // Copy the database (plus WAL sidecar files) to a temporary file and
+      // embed the current app settings into the copy. The live database is
+      // never modified.
+      final tempDir = await getTemporaryAppDirectory();
+      final tempPath = join(
+        tempDir,
+        'e1547_export_${DateTime.now().millisecondsSinceEpoch}.db',
       );
+      await dbFile.copy(tempPath);
+      for (final suffix in ['-wal', '-shm']) {
+        final sidecar = File('$dbPath$suffix');
+        if (sidecar.existsSync()) {
+          await sidecar.copy('$tempPath$suffix');
+        }
+      }
+      try {
+        driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+        final exportDb = AppDatabase(
+          driftDatabase(
+            name: 'export',
+            native: DriftNativeOptions(databasePath: () async => tempPath),
+          ),
+        );
+        try {
+          await writePreferencesBackup(
+            exportDb,
+            includeTranslationSettings: includeTranslation,
+          );
+        } finally {
+          await exportDb.close();
+        }
+      } finally {
+        driftRuntimeOptions.dontWarnAboutMultipleDatabases = false;
+      }
+      // Closing the connection checkpointed the WAL into the main file.
+      for (final suffix in ['-wal', '-shm']) {
+        final sidecar = File('$tempPath$suffix');
+        if (sidecar.existsSync()) {
+          await sidecar.delete();
+        }
+      }
+
+      String? outputFile;
+      try {
+        outputFile = await FilePicker.platform.saveFile(
+          dialogTitle: 'Export Database'.tr,
+          fileName: 'e1547_database_backup.db',
+          type: FileType.custom,
+          allowedExtensions: ['db'],
+          bytes: await File(tempPath).readAsBytes(),
+        );
+      } finally {
+        await File(tempPath).delete();
+      }
 
       navigator.pop();
       if (outputFile != null) {
@@ -160,13 +212,53 @@ class DatabaseExportTile extends StatelessWidget {
     }
   }
 
+  Future<bool?> _showExportOptions(BuildContext context) {
+    var includeTranslation = true;
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Export Database'.tr),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Includes all app settings'.tr),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: includeTranslation,
+                onChanged: (value) =>
+                    setState(() => includeTranslation = value ?? true),
+                title: Text('Include translation service settings'.tr),
+                subtitle: Text(
+                  'Unchecked exports default translation settings'.tr,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('CANCEL'.tr),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(includeTranslation),
+              child: Text('EXPORT'.tr),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: const Icon(Icons.file_download),
       title: Text('Export'.tr),
       subtitle: Text(
-        'Save a backup copy of your database'.tr,
+        'Save a backup copy of your database and settings'.tr,
         overflow: TextOverflow.ellipsis,
       ),
       onTap: () => _exportDatabase(context),
@@ -180,6 +272,8 @@ class DatabaseImportTile extends StatelessWidget {
   Future<void> _importDatabase(BuildContext context) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+
+    Map<String, String>? preferencesBackup;
 
     final confirmed = await _showImportWarning(context);
     if (!confirmed) return;
@@ -229,6 +323,7 @@ class DatabaseImportTile extends StatelessWidget {
           ),
         );
         await importDb.customSelect('SELECT 1').get();
+        preferencesBackup = await readPreferencesBackup(importDb);
         await importDb.close();
       } on Exception catch (e) {
         navigator.pop();
@@ -249,6 +344,12 @@ class DatabaseImportTile extends StatelessWidget {
       final dbPath = await getAppDatabasePath();
       final newDbPath = '$dbPath.new';
       await importFile.copy(newDbPath);
+
+      // Restore the app settings embedded in the backup, if any. The
+      // restart below reloads them.
+      if (preferencesBackup != null) {
+        await applyPreferencesBackup(preferencesBackup);
+      }
 
       navigator.pop();
       if (context.mounted) {

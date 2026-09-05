@@ -26,9 +26,19 @@ class DescriptionDisplay extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        DText(post.description),
-                        TranslationDisplay(entry: translation),
-                        TranslationButton(entry: translation),
+                        TranslationOriginal(
+                          category: TranslationCategory.description,
+                          entry: translation,
+                          original: DText(post.description),
+                        ),
+                        TranslationDisplay(
+                          entry: translation,
+                          category: TranslationCategory.description,
+                        ),
+                        TranslationButton(
+                          entry: translation,
+                          category: TranslationCategory.description,
+                        ),
                       ],
                     ),
                   ),

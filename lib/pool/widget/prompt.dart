@@ -54,9 +54,19 @@ Future<void> showPoolPrompt({
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DText(pool.description),
-                    TranslationDisplay(entry: translation),
-                    TranslationButton(entry: translation),
+                    TranslationOriginal(
+                      category: TranslationCategory.pool,
+                      entry: translation,
+                      original: DText(pool.description),
+                    ),
+                    TranslationDisplay(
+                      entry: translation,
+                      category: TranslationCategory.pool,
+                    ),
+                    TranslationButton(
+                      entry: translation,
+                      category: TranslationCategory.pool,
+                    ),
                   ],
                 ),
               )

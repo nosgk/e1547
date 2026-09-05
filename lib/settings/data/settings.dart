@@ -165,6 +165,19 @@ class Settings extends NotifiedSettings {
     initialValue: false,
   );
 
+  /// Whether tag names are translated automatically wherever they show.
+  late final ValueNotifier<bool> translateTagsAuto = createSetting<bool>(
+    key: 'translateTagsAuto',
+    initialValue: false,
+  );
+
+  /// Display mode per translation category ("description" → "bilingual" /
+  /// "translationOnly"); missing entries mean bilingual.
+  late final ValueNotifier<String> translateDisplayModes = createSetting(
+    key: 'translateDisplayModes',
+    initialValue: '{}',
+  );
+
   /// Target language code; see kTranslationLanguages in the translate module.
   late final ValueNotifier<String> translateTargetLanguage = createSetting(
     key: 'translateTargetLanguage',
@@ -202,6 +215,14 @@ class Settings extends NotifiedSettings {
   late final ValueNotifier<int> translateTimeoutSeconds = createSetting(
     key: 'translateTimeoutSeconds',
     initialValue: kDefaultTranslateTimeoutSeconds,
+  );
+  late final ValueNotifier<int> translateMaxTextLength = createSetting(
+    key: 'translateMaxTextLength',
+    initialValue: kDefaultTranslateMaxTextLength,
+  );
+  late final ValueNotifier<int> translateMaxParagraphs = createSetting(
+    key: 'translateMaxParagraphs',
+    initialValue: kDefaultTranslateMaxParagraphs,
   );
 
   // OpenAI-compatible provider settings.

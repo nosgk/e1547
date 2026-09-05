@@ -1,6 +1,7 @@
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/topic/topic.dart';
 import 'package:e1547/translate/translate.dart';
+import 'package:e1547/user/user.dart';
 import 'package:flutter/material.dart';
 import 'package:relative_time/relative_time.dart';
 
@@ -27,6 +28,10 @@ class TopicTile extends StatelessWidget {
           child: IntrinsicHeight(
             child: Row(
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: UserIdAvatar(userId: topic.creatorId, radius: 16),
+                ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -38,11 +43,23 @@ class TopicTile extends StatelessWidget {
                       builder: (context, translation) => Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            topic.title,
-                            style: Theme.of(context).textTheme.titleMedium,
+                          TranslationOriginal(
+                            category: TranslationCategory.topicTitle,
+                            entry: translation,
+                            original: Text(
+                              topic.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            replacementBuilder: (context, text) => Text(
+                              text,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                           ),
-                          TranslationDisplay(entry: translation, compact: true),
+                          TranslationDisplay(
+                            entry: translation,
+                            compact: true,
+                            category: TranslationCategory.topicTitle,
+                          ),
                           Dimmed(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
