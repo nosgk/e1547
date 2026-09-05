@@ -10,12 +10,15 @@ class PostFilter extends FilterController<Post>
     implements ValueNotifier<PostFilterValue> {
   PostFilter(this.client, [PostFilterValue? value])
     : _value = value ?? const PostFilterValue() {
+    _allowedPostsSet = {..._value.allowedPosts};
     client.traits.addListener(_updateDenyList);
   }
 
   final Client client;
 
   PostFilterValue _value;
+
+  Set<int> _allowedPostsSet = const {};
 
   final Map<int, _PostFilterCache> _filterCache = {};
 
@@ -87,11 +90,13 @@ class PostFilter extends FilterController<Post>
 
   Map<String, int> get blockedCountsByEntry {
     if (!denying) return const {};
+    final allowedPostIds = {...allowedPosts};
+    final allowedEntryNames = {...allowedEntries};
     final counts = <String, int>{};
     for (final post in tracked) {
-      if (allowedPosts.contains(post.id)) continue;
+      if (allowedPostIds.contains(post.id)) continue;
       for (final entry in entriesFor(post)) {
-        if (allowedEntries.contains(entry)) continue;
+        if (allowedEntryNames.contains(entry)) continue;
         counts[entry] = (counts[entry] ?? 0) + 1;
       }
     }
@@ -99,41 +104,32 @@ class PostFilter extends FilterController<Post>
   }
 
   List<String> entriesFor(Post post) {
-    _evictStaleEntries();
-
     final cached = _filterCache[post.id];
-    final now = DateTime.now();
 
     if (cached == null || cached.hash != post.hashCode) {
+      // Bounded memory: drop the cache wholesale when it grows too large.
+      // Denylist changes clear it via the traits listener, post changes are
+      // detected through the hash, so a full clear is always safe.
+      if (_filterCache.length > 4096) _filterCache.clear();
       final deniers = post.getDeniers(client.traits.value.denylist).toList();
-      _filterCache[post.id] = (
-        hash: post.hashCode,
-        entries: deniers,
-        lastAccessed: now,
-      );
+      _filterCache[post.id] = (hash: post.hashCode, entries: deniers);
       return deniers;
     }
 
-    _filterCache[post.id] = (
-      hash: cached.hash,
-      entries: cached.entries,
-      lastAccessed: now,
-    );
     return cached.entries;
-  }
-
-  void _evictStaleEntries() {
-    final cutoff = DateTime.now().subtract(const Duration(minutes: 1));
-    _filterCache.removeWhere((_, entry) => entry.lastAccessed.isBefore(cutoff));
   }
 
   bool denies(Post post) {
     if (!denying) return false;
-    if (allowedPosts.contains(post.id)) return false;
-    final activeEntries = entriesFor(
-      post,
-    ).where((entry) => !allowedEntries.contains(entry));
-    return activeEntries.isNotEmpty;
+    // An empty denylist can never deny anything; skip the cache machinery.
+    if (client.traits.value.denylist.isEmpty) return false;
+    if (_allowedPostsSet.contains(post.id)) return false;
+    final entries = entriesFor(post);
+    if (entries.isEmpty) return false;
+    for (final entry in entries) {
+      if (!allowedEntries.contains(entry)) return true;
+    }
+    return false;
   }
 
   @override
@@ -153,11 +149,7 @@ class FavoritePostFilter extends PostFilter {
   }
 }
 
-typedef _PostFilterCache = ({
-  int hash,
-  List<String> entries,
-  DateTime lastAccessed,
-});
+typedef _PostFilterCache = ({int hash, List<String> entries});
 
 @freezed
 abstract class PostFilterValue with _$PostFilterValue {

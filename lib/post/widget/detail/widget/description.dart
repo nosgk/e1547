@@ -1,5 +1,6 @@
 import 'package:e1547/markup/markup.dart';
 import 'package:e1547/post/post.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
 class DescriptionDisplay extends StatelessWidget {
@@ -19,7 +20,18 @@ class DescriptionDisplay extends StatelessWidget {
               child: Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: DText(post.description),
+                  child: TranslatableHost(
+                    text: post.description,
+                    builder: (context, translation) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DText(post.description),
+                        TranslationDisplay(entry: translation),
+                        TranslationButton(entry: translation),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:e1547/app/app.dart';
 import 'package:e1547/client/client.dart';
 import 'package:e1547/logs/logs.dart';
@@ -7,6 +9,30 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 final DTextGrammar _grammar = DTextGrammar();
+
+/// Process-wide LRU cache of parsed DText documents.
+///
+/// Parsed documents are immutable trees, so they can be shared freely between
+/// widgets. This avoids re-running the (expensive) recursive-descent parse
+/// every time a comment tile or description remounts while scrolling.
+final LinkedHashMap<String, DTextDocument> _parseCache = LinkedHashMap();
+
+const int _parseCacheLimit = 64;
+
+DTextDocument? _cachedParse(String value) {
+  final document = _parseCache.remove(value);
+  if (document != null) {
+    _parseCache[value] = document;
+  }
+  return document;
+}
+
+void _storeParse(String value, DTextDocument document) {
+  if (_parseCache.length >= _parseCacheLimit) {
+    _parseCache.remove(_parseCache.keys.first);
+  }
+  _parseCache[value] = document;
+}
 
 class DText extends StatefulWidget {
   const DText(
@@ -36,8 +62,16 @@ class _DTextState extends State<DText> {
   Object? _error;
 
   void _runParse() {
+    final cached = _cachedParse(widget.value);
+    if (cached != null) {
+      _content = cached;
+      _error = null;
+      return;
+    }
     try {
-      _content = _grammar.parse(widget.value);
+      final document = _grammar.parse(widget.value);
+      _storeParse(widget.value, document);
+      _content = document;
       _error = null;
     } on Object catch (e, s) {
       _logger.error('Failed to parse DText', null, e, s);

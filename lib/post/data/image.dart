@@ -33,14 +33,20 @@ Future<void> preloadPostImages({
   required PostImageSize size,
   int reach = 1,
 }) async {
-  for (int i = -(reach + 1); i < reach; i++) {
-    int target = index + 1 + i;
-    if (0 <= target && target < posts.length) {
-      Post post = posts[target];
-      if (post.type == PostType.image && post.file != null) {
-        if (!context.mounted) return;
-        await preloadPostImage(context: context, post: post, size: size);
-      }
-    }
-  }
+  if (!context.mounted) return;
+  // All context access below happens synchronously before the first await,
+  // so a single mounted check is sufficient. Preloading in parallel avoids
+  // serializing neighbor fetches behind the currently displayed image.
+  await Future.wait([
+    for (int i = -(reach + 1); i < reach; i++)
+      () async {
+        int target = index + 1 + i;
+        if (0 <= target && target < posts.length) {
+          Post post = posts[target];
+          if (post.type == PostType.image && post.file != null) {
+            await preloadPostImage(context: context, post: post, size: size);
+          }
+        }
+      }(),
+  ]);
 }

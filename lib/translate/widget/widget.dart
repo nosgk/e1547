@@ -1,0 +1,1 @@
+export 'translatable.dart';

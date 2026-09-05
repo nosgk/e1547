@@ -9,6 +9,7 @@ import 'package:e1547/identity/identity.dart';
 import 'package:e1547/logs/logs.dart';
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sub/flutter_sub.dart';
 import 'package:local_auth/local_auth.dart';
@@ -356,6 +357,39 @@ class SettingsPage extends StatelessWidget {
                             ),
                           )
                           .toList(),
+                    ),
+                  ),
+                ),
+              ),
+              const Divider(),
+              SectionHeader(
+                indent: SectionHeader.listTileIndent,
+                title: 'Translation'.tr,
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: settings.translateEnabled,
+                builder: (context, value, child) => SwitchListTile(
+                  title: Text('Online translation'.tr),
+                  subtitle: Text('Translate posts and comments'.tr),
+                  secondary: const Icon(Icons.translate),
+                  value: value,
+                  onChanged: (value) => settings.translateEnabled.value = value,
+                ),
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: settings.translateEnabled,
+                builder: (context, value, child) => ListTile(
+                  title: Text('Translation Settings'.tr),
+                  subtitle: Text(
+                    '${settings.translateProvider.value.label.tr}'
+                    ' · '
+                    '${kTranslationLanguages[settings.translateTargetLanguage.value] ?? settings.translateTargetLanguage.value}',
+                  ),
+                  leading: const Icon(Icons.settings_suggest),
+                  enabled: value,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const TranslationSettingsPage(),
                     ),
                   ),
                 ),

@@ -5,3 +5,4 @@ export 'grid.dart';
 export 'icon.dart';
 export 'settings.dart';
 export 'text.dart';
+export 'translation.dart';

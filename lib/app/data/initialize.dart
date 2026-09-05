@@ -50,7 +50,9 @@ Future<Logs> initializeLogger({
     printers: [
       ...?printers,
       JsonLogPrinter(logFile),
-      const ConsoleLogPrinter(),
+      // Console output is debug-only: each debugPrint is a platform channel
+      // call that competes with frame callbacks in release builds.
+      if (kDebugMode) const ConsoleLogPrinter(),
     ],
   );
 

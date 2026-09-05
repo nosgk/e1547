@@ -4,6 +4,7 @@ import 'package:e1547/markup/markup.dart';
 import 'package:e1547/query/query.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/ticket/ticket.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:e1547/user/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,64 +19,69 @@ class CommentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(
-        children: [
-          Hero(
-            tag: comment.hero,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(right: 8, top: 4),
-                  child: Icon(Icons.person),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CommentHeader(comment: comment),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [Expanded(child: DText(comment.body))],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            flightShuttleBuilder:
-                (
-                  flightContext,
-                  animation,
-                  flightDirection,
-                  fromHeroContext,
-                  toHeroContext,
-                ) => Material(
-                  type: MaterialType.transparency,
-                  child: SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: switch (flightDirection) {
-                      HeroFlightDirection.push => fromHeroContext.widget,
-                      HeroFlightDirection.pop => toHeroContext.widget,
-                    },
-                  ),
-                ),
-          ),
-          if (hasActions)
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
+      child: TranslatableHost(
+        text: comment.body,
+        builder: (context, translation) => Column(
+          children: [
+            Hero(
+              tag: comment.hero,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CommentVotes(comment: comment),
-                  const Spacer(),
-                  CommentMenu(comment: comment),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8, top: 4),
+                    child: Icon(Icons.person),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CommentHeader(comment: comment),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [Expanded(child: DText(comment.body))],
+                        ),
+                        TranslationDisplay(entry: translation),
+                      ],
+                    ),
+                  ),
                 ],
               ),
+              flightShuttleBuilder:
+                  (
+                    flightContext,
+                    animation,
+                    flightDirection,
+                    fromHeroContext,
+                    toHeroContext,
+                  ) => Material(
+                    type: MaterialType.transparency,
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: switch (flightDirection) {
+                        HeroFlightDirection.push => fromHeroContext.widget,
+                        HeroFlightDirection.pop => toHeroContext.widget,
+                      },
+                    ),
+                  ),
             ),
-          CommentWarnings(comment: comment),
-          const Divider(),
-        ],
+            if (hasActions)
+              Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    CommentVotes(comment: comment),
+                    TranslationButton(entry: translation, compact: true),
+                    const Spacer(),
+                    CommentMenu(comment: comment),
+                  ],
+                ),
+              ),
+            CommentWarnings(comment: comment),
+            const Divider(),
+          ],
+        ),
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:e1547/markup/markup.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
@@ -28,23 +30,64 @@ class DTextEditor extends StatelessWidget {
       preview: (context, controller) => Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: AnimatedBuilder(
-            animation: controller,
-            builder: (context, child) {
-              if (controller.text.trim().isNotEmpty) {
-                return DText(controller.text);
-              } else {
-                return Text(
-                  'your text here',
-                  style: TextStyle(
-                    color: dimTextColor(context),
-                    fontStyle: FontStyle.italic,
-                  ),
-                );
-              }
-            },
-          ),
+          child: _DTextEditorPreview(controller: controller),
         ),
+      ),
+    );
+  }
+}
+
+/// Debounced DText preview for the editor.
+///
+/// Reparsing the whole text on every keystroke is expensive; the preview
+/// instead settles 150ms after typing stops. Clearing updates instantly.
+class _DTextEditorPreview extends StatefulWidget {
+  const _DTextEditorPreview({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  State<_DTextEditorPreview> createState() => _DTextEditorPreviewState();
+}
+
+class _DTextEditorPreviewState extends State<_DTextEditorPreview> {
+  Timer? _debounce;
+  late String _text = widget.controller.text;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    widget.controller.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    _debounce?.cancel();
+    if (widget.controller.text.trim().isEmpty) {
+      if (mounted) setState(() => _text = widget.controller.text);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 150), () {
+      if (mounted) setState(() => _text = widget.controller.text);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_text.trim().isNotEmpty) {
+      return DText(_text);
+    }
+    return Text(
+      'your text here',
+      style: TextStyle(
+        color: dimTextColor(context),
+        fontStyle: FontStyle.italic,
       ),
     );
   }
