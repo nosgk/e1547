@@ -134,7 +134,7 @@ jobs:
         run: flutter pub get
 
       - name: bump version
-        if: ${{ github.event.inputs.version != 'none' }}
+        if: ${{ github.event.inputs.version != 'none' && needs.plan.outputs.release == 'true' }}
         run: |
           dart pub global activate cider
           dart pub global run cider bump ${{ env.VERSION_BUMP }} --bump-build
@@ -231,7 +231,7 @@ jobs:
         run: flutter pub get
 
       - name: bump version
-        if: ${{ github.event.inputs.version != 'none' }}
+        if: ${{ github.event.inputs.version != 'none' && needs.plan.outputs.release == 'true' }}
         run: |
           dart pub global activate cider
           dart pub global run cider bump ${{ env.VERSION_BUMP }} --bump-build
@@ -278,7 +278,7 @@ jobs:
         run: flutter pub get
 
       - name: bump version
-        if: ${{ github.event.inputs.version != 'none' }}
+        if: ${{ github.event.inputs.version != 'none' && needs.plan.outputs.release == 'true' }}
         shell: bash
         run: |
           dart pub global activate cider
@@ -336,7 +336,7 @@ jobs:
         run: flutter pub get
 
       - name: bump version
-        if: ${{ github.event.inputs.version != 'none' }}
+        if: ${{ github.event.inputs.version != 'none' && needs.plan.outputs.release == 'true' }}
         run: |
           dart pub global activate cider
           dart pub global run cider bump ${{ env.VERSION_BUMP }} --bump-build
