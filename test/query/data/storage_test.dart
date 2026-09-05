@@ -79,11 +79,9 @@ void main() {
     test('drops the least recent entries past the cap', () async {
       final now = DateTime.now();
       for (int i = 0; i < 5; i++) {
-        storage.put(
-          entry('["ident",1,"posts",$i]', {
-            'id': i,
-          }, createdAt: now.subtract(Duration(minutes: 5 - i))),
-        );
+        final data = {'id': i};
+        final time = now.subtract(Duration(minutes: 5 - i));
+        storage.put(entry('["ident",1,"posts",$i]', data, createdAt: time));
       }
       await settle();
 
