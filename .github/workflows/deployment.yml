@@ -56,7 +56,58 @@ env:
   DRY_RUN: ${{ github.event.inputs.dry_run }}
 
 jobs:
+  plan:
+    name: 构建规划
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.plan.outputs.android }}
+      ios: ${{ steps.plan.outputs.ios }}
+      windows: ${{ steps.plan.outputs.windows }}
+      linux: ${{ steps.plan.outputs.linux }}
+      debug: ${{ steps.plan.outputs.debug }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - name: plan builds
+        id: plan
+        run: |
+          platforms="${{ github.event.inputs.platforms }}"
+          debug="${{ github.event.inputs.build_debug }}"
+          # Debug 构建是安卓专属：强制只构建安卓
+          if [ "$debug" = "true" ]; then
+            platforms="android"
+          fi
+
+          android=false
+          ios=false
+          windows=false
+          linux=false
+          case "$platforms" in
+            all)     android=true; ios=true;     windows=true; linux=true ;;
+            android) android=true ;;
+            ios)     ios=true ;;
+            windows) windows=true ;;
+            linux)   linux=true ;;
+          esac
+
+          # 只有全平台 Release 构建才进入发布链
+          release=false
+          if [ "$platforms" = "all" ] && [ "$debug" != "true" ]; then
+            release=true
+          fi
+
+          {
+            echo "android=$android"
+            echo "ios=$ios"
+            echo "windows=$windows"
+            echo "linux=$linux"
+            echo "debug=$debug"
+            echo "release=$release"
+          } >> "$GITHUB_OUTPUT"
+
   android-build:
+    name: 安卓构建
+    needs: plan
+    if: ${{ needs.plan.outputs.android == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: setup actions
@@ -89,7 +140,7 @@ jobs:
           dart pub global run cider bump ${{ env.VERSION_BUMP }} --bump-build
 
       - name: configure release keys
-        if: ${{ github.event.inputs.build_debug != 'true' }}
+        if: ${{ needs.plan.outputs.debug != 'true' }}
         env:
           KEYSTORE: ${{ secrets.KEYSTORE }}
           KEYCONFIG: ${{ secrets.KEYCONFIG }}
@@ -99,37 +150,58 @@ jobs:
           echo "$KEYCONFIG" | base64 -d > android/keys/key.properties
 
       - name: build APK
-        run: flutter build apk
+        run: |
+          if [ "${{ needs.plan.outputs.debug }}" = "true" ]; then
+            flutter build apk --debug --target-platform android-arm64
+          else
+            flutter build apk
+          fi
 
       - name: build AAB
+        if: ${{ needs.plan.outputs.debug != 'true' }}
         run: flutter build appbundle
 
       - name: package release
         run: |
-          mv build/app/outputs/apk/release/app-universal-release.apk app-universal-release.apk
-          mv build/app/outputs/apk/release/app-arm64-v8a-release.apk app-arm64-v8a-release.apk
-          mv build/app/outputs/apk/release/app-armeabi-v7a-release.apk app-armeabi-v7a-release.apk
-          mv build/app/outputs/bundle/release/app-release.aab app-release.aab
+          if [ "${{ needs.plan.outputs.debug }}" = "true" ]; then
+            mv build/app/outputs/apk/debug/app-arm64-v8a-debug.apk app-arm64-v8a-debug.apk
+          else
+            mv build/app/outputs/apk/release/app-universal-release.apk app-universal-release.apk
+            mv build/app/outputs/apk/release/app-arm64-v8a-release.apk app-arm64-v8a-release.apk
+            mv build/app/outputs/apk/release/app-armeabi-v7a-release.apk app-armeabi-v7a-release.apk
+            mv build/app/outputs/bundle/release/app-release.aab app-release.aab
+          fi
+
+      - name: upload Debug APK to artifacts
+        if: ${{ needs.plan.outputs.debug == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: debug-apk-arm64
+          path: app-arm64-v8a-debug.apk
 
       - name: upload Universal APK to artifacts
+        if: ${{ needs.plan.outputs.debug != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: release-apk-universal
           path: app-universal-release.apk
 
       - name: upload ARM64 APK to artifacts
+        if: ${{ needs.plan.outputs.debug != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: release-apk-arm64
           path: app-arm64-v8a-release.apk
 
       - name: upload ARMv7 APK to artifacts
+        if: ${{ needs.plan.outputs.debug != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: release-apk-armv7
           path: app-armeabi-v7a-release.apk
 
       - name: upload AAB to artifacts
+        if: ${{ needs.plan.outputs.debug != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: release-aab
@@ -137,7 +209,8 @@ jobs:
 
   ios-build:
     name: iOS 构建
-    if: ${{ github.event.inputs.build_debug != 'true' && (github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'ios') }}
+    needs: plan
+    if: ${{ needs.plan.outputs.ios == 'true' }}
     runs-on: macos-latest
     steps:
       - name: setup actions
@@ -181,6 +254,9 @@ jobs:
           path: Runner.ipa
 
   windows-build:
+    name: Windows 构建
+    needs: plan
+    if: ${{ needs.plan.outputs.windows == 'true' }}
     runs-on: windows-latest
     steps:
       - name: setup actions
@@ -231,6 +307,9 @@ jobs:
           path: e1547-setup.exe
 
   linux-build:
+    name: Linux 构建
+    needs: plan
+    if: ${{ needs.plan.outputs.linux == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: setup actions
@@ -297,8 +376,9 @@ jobs:
           path: e1547.tar.gz
 
   release:
+    name: 发布与上架
     needs: [android-build, ios-build, windows-build, linux-build]
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ needs.plan.outputs.release == 'true' && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     steps:
       - name: mint publisher token
