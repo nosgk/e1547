@@ -15,6 +15,8 @@ class TranslationEntry extends ChangeNotifier {
   TranslationStatus _status = TranslationStatus.idle;
   String? _translation;
   String? _error;
+  int? _errorCode;
+  String? _errorDetail;
   String? _providerLabel;
   bool _expanded = false;
   bool _autoAttempted = false;
@@ -24,8 +26,14 @@ class TranslationEntry extends ChangeNotifier {
   /// The translated text, once loaded.
   String? get translation => _translation;
 
-  /// Short error message for the error state.
+  /// Short localized error message for the error state.
   String? get error => _error;
+
+  /// HTTP status code of the failure, when available.
+  int? get errorCode => _errorCode;
+
+  /// Server response excerpt of the failure, when available.
+  String? get errorDetail => _errorDetail;
 
   /// Human-readable attribution, e.g. "Google Translate" or a model name.
   String? get providerLabel => _providerLabel;
@@ -43,6 +51,8 @@ class TranslationEntry extends ChangeNotifier {
     if (text.trim().isEmpty) return;
     _status = TranslationStatus.loading;
     _error = null;
+    _errorCode = null;
+    _errorDetail = null;
     _autoAttempted = true;
     notifyListeners();
     try {
@@ -55,7 +65,13 @@ class TranslationEntry extends ChangeNotifier {
       _status = TranslationStatus.success;
       _expanded = true;
     } on Object catch (error) {
-      _error = error is TranslationException ? error.message : '$error';
+      if (error is TranslationException) {
+        _error = error.message;
+        _errorCode = error.code;
+        _errorDetail = error.detail;
+      } else {
+        _error = '$error';
+      }
       _status = TranslationStatus.error;
     }
     notifyListeners();

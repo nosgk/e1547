@@ -19,7 +19,7 @@ class PoolDisplay extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const RelationHeader(title: 'Pools'),
+        RelationHeader(title: 'Pools'.tr),
         ...pools.map((id) => PoolRelationTile(id: id)),
         const Divider(),
       ],

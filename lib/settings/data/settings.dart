@@ -69,6 +69,26 @@ class Settings extends NotifiedSettings {
     values: VideoResolution.values,
   );
 
+  /// Whether GIF posts play animated in grid/timeline previews.
+  late final ValueNotifier<bool> previewAutoplayGifs = createSetting<bool>(
+    key: 'previewAutoplayGifs',
+    initialValue: false,
+  );
+
+  /// Whether video posts autoplay muted in grid/timeline previews.
+  late final ValueNotifier<bool> previewAutoplayVideos = createSetting<bool>(
+    key: 'previewAutoplayVideos',
+    initialValue: false,
+  );
+
+  /// Video variant quality used for autoplaying previews.
+  late final ValueNotifier<VideoResolution> previewVideoQuality =
+      createEnumSetting(
+        key: 'previewVideoQuality',
+        initialValue: VideoResolution.standard,
+        values: VideoResolution.values,
+      );
+
   late final ValueNotifier<bool> secureDisplay = createSetting<bool>(
     key: 'secureDisplay',
     initialValue: false,
@@ -98,6 +118,35 @@ class Settings extends NotifiedSettings {
   late final ValueNotifier<bool> showDev = createSetting<bool>(
     key: 'showDev',
     initialValue: false,
+  );
+
+  // -------------------------------------------------------------------------
+  // Appearance
+  // -------------------------------------------------------------------------
+
+  /// Width of the navigation drawer in logical pixels.
+  late final ValueNotifier<double> drawerWidth = createSetting<double>(
+    key: 'drawerWidth',
+    initialValue: 304,
+  );
+
+  /// Global font scale factor applied to all text themes.
+  late final ValueNotifier<double> fontScale = createSetting<double>(
+    key: 'fontScale',
+    initialValue: 1,
+  );
+
+  /// When true, the platform default font is used and [customFontFamily] is
+  /// ignored.
+  late final ValueNotifier<bool> useSystemFont = createSetting<bool>(
+    key: 'useSystemFont',
+    initialValue: true,
+  );
+
+  /// Custom font family used across the app while [useSystemFont] is false.
+  late final ValueNotifier<String> customFontFamily = createSetting(
+    key: 'customFontFamily',
+    initialValue: '',
   );
 
   // -------------------------------------------------------------------------
@@ -134,6 +183,30 @@ class Settings extends NotifiedSettings {
         initialValue: TranslationProvider.google,
         values: TranslationProvider.values,
       );
+
+  // Azure Cognitive settings.
+  late final ValueNotifier<String> translateAzureKey = createSetting(
+    key: 'translateAzureKey',
+    initialValue: '',
+  );
+  late final ValueNotifier<String> translateAzureEndpoint = createSetting(
+    key: 'translateAzureEndpoint',
+    initialValue: '',
+  );
+  late final ValueNotifier<String> translateAzureHeaders = createSetting(
+    key: 'translateAzureHeaders',
+    initialValue: '',
+  );
+  late final ValueNotifier<String> translateAzureBody = createSetting(
+    key: 'translateAzureBody',
+    initialValue: '',
+  );
+
+  /// Client-side request quota in requests per minute; 0 disables limiting.
+  late final ValueNotifier<int> translateRateLimit = createSetting(
+    key: 'translateRateLimit',
+    initialValue: kDefaultTranslationRateLimit,
+  );
 
   // OpenAI-compatible provider settings.
   late final ValueNotifier<String> translateApiKey = createSetting(

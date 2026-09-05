@@ -47,9 +47,9 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 const Divider(),
-                const SectionHeader(
+                SectionHeader(
                   indent: SectionHeader.listTileIndent,
-                  title: 'User',
+                  title: 'User'.tr,
                 ),
                 Consumer<Client>(
                   builder: (context, client, child) => ValueListenableBuilder(
@@ -136,9 +136,9 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 const Divider(),
-                const SectionHeader(
+                SectionHeader(
                   indent: SectionHeader.listTileIndent,
-                  title: 'Appearance',
+                  title: 'Appearance'.tr,
                 ),
                 ValueListenableBuilder<AppTheme>(
                   valueListenable: settings.theme,
@@ -241,6 +241,97 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                 ),
+                ValueListenableBuilder<double>(
+                  valueListenable: settings.drawerWidth,
+                  builder: (context, value, child) => ListTile(
+                    title: Text('Drawer width'.tr),
+                    subtitle: Slider(
+                      value: value.clamp(240, 400).toDouble(),
+                      min: 240,
+                      max: 400,
+                      divisions: 32,
+                      label: value.round().toString(),
+                      onChanged: (value) => settings.drawerWidth.value = value,
+                    ),
+                    leading: const Icon(Icons.menu_open),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.restart_alt),
+                      onPressed: () => settings.drawerWidth.value = 304,
+                    ),
+                  ),
+                ),
+                ValueListenableBuilder<double>(
+                  valueListenable: settings.fontScale,
+                  builder: (context, value, child) => ListTile(
+                    title: Text('Font size'.tr),
+                    subtitle: Slider(
+                      value: value.clamp(0.8, 1.4),
+                      min: 0.8,
+                      max: 1.4,
+                      divisions: 12,
+                      label: '${(value * 100).round()}%',
+                      onChanged: (value) => settings.fontScale.value = value,
+                    ),
+                    leading: const Icon(Icons.format_size),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.restart_alt),
+                      onPressed: () => settings.fontScale.value = 1,
+                    ),
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: settings.useSystemFont,
+                  builder: (context, value, child) => SwitchListTile(
+                    title: Text('Use system font'.tr),
+                    subtitle: Text(
+                      value ? 'platform default font'.tr : 'custom font'.tr,
+                    ),
+                    secondary: const Icon(Icons.font_download),
+                    value: value,
+                    onChanged: (value) => settings.useSystemFont.value = value,
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: settings.useSystemFont,
+                  builder: (context, useSystemFont, child) =>
+                      ValueListenableBuilder<String>(
+                        valueListenable: settings.customFontFamily,
+                        builder: (context, family, child) => ListTile(
+                          title: Text('Custom font family'.tr),
+                          subtitle: Text(
+                            family.trim().isEmpty ? 'default'.tr : family,
+                          ),
+                          leading: const SizedBox(width: 24),
+                          enabled: !useSystemFont,
+                          onTap: () => showDialog(
+                            context: context,
+                            builder: (dialogContext) => PromptActions(
+                              child: Builder(
+                                builder: (innerContext) {
+                                  final actionController = PromptActions.of(
+                                    innerContext,
+                                  );
+                                  return AlertDialog(
+                                    content: ControlledTextField(
+                                      labelText: 'Custom font family'.tr,
+                                      actionController: actionController,
+                                      textController: TextEditingController(
+                                        text: settings.customFontFamily.value,
+                                      ),
+                                      submit: (value) {
+                                        settings.customFontFamily.value = value
+                                            .trim();
+                                        Navigator.of(dialogContext).pop();
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                ),
                 Column(
                   children: [
                     ValueListenableBuilder<int>(
@@ -289,6 +380,61 @@ class SettingsPage extends StatelessWidget {
                     secondary: const Icon(Icons.subtitles),
                     value: value,
                     onChanged: (value) => settings.showPostInfo.value = value,
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: settings.previewAutoplayGifs,
+                  builder: (context, value, child) => SwitchListTile(
+                    title: Text('Autoplay GIFs in previews'.tr),
+                    secondary: const Icon(Icons.gif),
+                    value: value,
+                    onChanged: (value) =>
+                        settings.previewAutoplayGifs.value = value,
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: settings.previewAutoplayVideos,
+                  builder: (context, value, child) => Column(
+                    children: [
+                      SwitchListTile(
+                        title: Text('Autoplay videos in previews'.tr),
+                        subtitle: Text('muted'.tr),
+                        secondary: const Icon(Icons.smart_display),
+                        value: value,
+                        onChanged: (value) =>
+                            settings.previewAutoplayVideos.value = value,
+                      ),
+                      if (value)
+                        ValueListenableBuilder<VideoResolution>(
+                          valueListenable: settings.previewVideoQuality,
+                          builder: (context, quality, child) => ListTile(
+                            leading: const SizedBox(width: 24),
+                            title: Text('Preview video quality'.tr),
+                            subtitle: Text(quality.title),
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (context) => SimpleDialog(
+                                title: Text('Preview video quality'.tr),
+                                children: [
+                                  for (final resolution
+                                      in VideoResolution.values)
+                                    ListTile(
+                                      title: Text(resolution.title),
+                                      trailing: resolution == quality
+                                          ? const Icon(Icons.check)
+                                          : null,
+                                      onTap: () {
+                                        settings.previewVideoQuality.value =
+                                            resolution;
+                                        Navigator.of(context).maybePop();
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const Divider(),

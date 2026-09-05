@@ -106,6 +106,12 @@ class DriftFileCacheStorage extends CacheInfoRepository {
   int _connections = 0;
   Completer<bool>? _opened;
 
+  /// Whether the last reference has been closed. Deferred flush timers and
+  /// cache-manager reads can still fire after the owning database has been
+  /// closed (e.g. during app re-initialization); guard every query with this
+  /// flag so they become no-ops instead of crashing on a dead connection.
+  bool _closed = false;
+
   @override
   Future<bool> open() async {
     _connections++;
@@ -219,8 +225,19 @@ class DriftFileCacheStorage extends CacheInfoRepository {
   Future<List<CacheObject>> _read(
     Future<List<FileCacheTableData>> Function() query,
   ) async {
-    await _flush();
-    return (await query()).map(_toObject).toList();
+    if (_closed) return const [];
+    try {
+      await _flush();
+      if (_closed) return const [];
+      return (await query()).map(_toObject).toList();
+      // ignore: avoid_catching_errors -- drift throws StateError on closed
+      // connections; swallowing it is the intended recovery here.
+      // ignore: avoid_catching_errors -- intended recovery from closed DB connections.
+    } on StateError {
+      // The database connection was closed mid-query (app re-initialization).
+      _closed = true;
+      return const [];
+    }
   }
 
   @override

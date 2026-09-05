@@ -5,8 +5,10 @@ import 'package:e1547/markup/markup.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:e1547/wiki/wiki.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 Future<void> showTagSearchPrompt({
   required BuildContext context,
@@ -44,10 +46,17 @@ Future<void> showTagSearchPrompt({
                   ),
                 );
               },
-              child: Text(
-                tagToName(tag),
-                style: Theme.of(context).textTheme.titleLarge,
-                softWrap: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tagToName(tag),
+                    style: Theme.of(context).textTheme.titleLarge,
+                    softWrap: true,
+                  ),
+                  TagPostCountLine(tag: tag),
+                ],
               ),
             ),
             SingleChildScrollView(
@@ -226,7 +235,18 @@ class _SearchTagDisplayState extends State<SearchTagDisplay> {
         showChild: snapshot.connectionState == ConnectionState.done,
         builder: (context) {
           if (snapshot.hasData) {
-            return DText(snapshot.data!.body);
+            return TranslatableHost(
+              text: snapshot.data!.body,
+              builder: (context, translation) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DText(snapshot.data!.body),
+                  TranslationDisplay(entry: translation),
+                  TranslationButton(entry: translation),
+                ],
+              ),
+            );
           } else if (snapshot.hasError) {
             return IconMessage(
               title: Text('unable to retrieve wiki entry'.tr),
@@ -261,6 +281,59 @@ class _SearchTagDisplayState extends State<SearchTagDisplay> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The exact global post count of a tag, as reported by the API. Renders
+/// nothing while loading or when the tag cannot be resolved.
+class TagPostCountLine extends StatefulWidget {
+  const TagPostCountLine({super.key, required this.tag});
+
+  final String tag;
+
+  @override
+  State<TagPostCountLine> createState() => _TagPostCountLineState();
+}
+
+class _TagPostCountLineState extends State<TagPostCountLine> {
+  Future<Tag?>? _tag;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tag ??= _fetch();
+  }
+
+  Future<Tag?> _fetch() async {
+    final client = context.read<Client>();
+    final raw = tagToRaw(widget.tag);
+    final results = await client.tags.page(
+      query: {'search[name_matches]': raw},
+      limit: 1,
+    );
+    return results.where((e) => e.name == raw).firstOrNull;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Tag?>(
+      future: _tag,
+      builder: (context, snapshot) {
+        final tag = snapshot.data;
+        if (tag == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            '{count} posts'.trArgs({
+              'count': NumberFormat.decimalPattern().format(tag.count),
+            }),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+          ),
+        );
+      },
     );
   }
 }

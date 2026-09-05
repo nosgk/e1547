@@ -15,11 +15,11 @@ class FavPage extends StatelessWidget {
     final client = context.watch<Client>();
     return RouterDrawerEntry<FavPage>(
       child: client.identity.username == null
-          ? const AdaptiveScaffold(
-              appBar: DefaultAppBar(title: Text('Favorites')),
+          ? AdaptiveScaffold(
+              appBar: DefaultAppBar(title: Text('Favorites'.tr)),
               body: IconMessage(
-                icon: Icon(Icons.person_search),
-                title: Text('Favorites are unavailable for anonymous users'),
+                icon: const Icon(Icons.person_search),
+                title: Text('Favorites are unavailable for anonymous users'.tr),
               ),
             )
           : FilterControllerProvider<PostFilter, Post>(
@@ -86,8 +86,8 @@ class FavoriteOrderSwitch extends StatelessWidget {
     final addedOrder = order == null || order == 'fav';
     return SwitchListTile(
       secondary: const Icon(Icons.sort),
-      title: const Text('Favorite order'),
-      subtitle: Text(addedOrder ? 'added order' : 'id order'),
+      title: Text('Favorite order'.tr),
+      subtitle: Text(addedOrder ? 'added order'.tr : 'id order'.tr),
       value: addedOrder,
       onChanged: (value) {
         final next = TagMap(controller.value.tags);

@@ -8,38 +8,38 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Builds a [TranslationConfig] from the current settings values, falling
-/// back to defaults for empty optional fields.
+/// back to defaults for empty optional fields. Also applies the configured
+/// request-per-minute quota to the service.
 TranslationConfig translationConfigFromSettings(Settings settings) {
+  TranslationService.instance.requestsPerMinute =
+      settings.translateRateLimit.value;
   final provider = settings.translateProvider.value;
   return TranslationConfig(
     provider: provider,
     targetLanguage: settings.translateTargetLanguage.value,
     apiKey: settings.translateApiKey.value,
-    baseUrl: settings.translateBaseUrl.value.trim().isEmpty
-        ? kDefaultOpenAiBaseUrl
-        : settings.translateBaseUrl.value,
-    model: settings.translateModel.value.trim().isEmpty
-        ? kDefaultOpenAiModel
-        : settings.translateModel.value,
-    systemPrompt: settings.translateSystemPrompt.value.trim().isEmpty
-        ? kDefaultTranslationSystemPrompt
-        : settings.translateSystemPrompt.value,
-    userPrompt: settings.translateUserPrompt.value.trim().isEmpty
-        ? kDefaultTranslationUserPrompt
-        : settings.translateUserPrompt.value,
+    baseUrl: settings.translateBaseUrl.value,
+    model: settings.translateModel.value,
+    systemPrompt: settings.translateSystemPrompt.value,
+    userPrompt: settings.translateUserPrompt.value,
+    azureApiKey: settings.translateAzureKey.value,
+    azureEndpoint: settings.translateAzureEndpoint.value,
     customUrl: switch (provider) {
       TranslationProvider.google => settings.translateGoogleUrl.value,
       TranslationProvider.microsoft => settings.translateMicrosoftUrl.value,
+      TranslationProvider.azure => null,
       TranslationProvider.openai => settings.translateOpenaiUrl.value,
     },
     customHeaders: switch (provider) {
       TranslationProvider.google => settings.translateGoogleHeaders.value,
       TranslationProvider.microsoft => settings.translateMicrosoftHeaders.value,
+      TranslationProvider.azure => settings.translateAzureHeaders.value,
       TranslationProvider.openai => settings.translateOpenaiHeaders.value,
     },
     customBody: switch (provider) {
       TranslationProvider.google => settings.translateGoogleBody.value,
       TranslationProvider.microsoft => settings.translateMicrosoftBody.value,
+      TranslationProvider.azure => settings.translateAzureBody.value,
       TranslationProvider.openai => settings.translateOpenaiBody.value,
     },
   );
@@ -104,7 +104,17 @@ void translateEntry(BuildContext context, TranslationEntry entry) {
   final ValueListenable<bool>? enabledListenable = tryTranslationEnabledOf(
     context,
   );
-  if (enabledListenable == null || !enabledListenable.value) return;
+  if (enabledListenable == null || !enabledListenable.value) {
+    // Make the silent gate visible: users tapping a translation affordance
+    // while the feature is off get explicit feedback instead of nothing.
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text('Online translation is disabled'.tr),
+      ),
+    );
+    return;
+  }
   if (entry.translation != null) {
     entry.expand();
     return;
@@ -358,24 +368,44 @@ class TranslationDisplay extends StatelessWidget {
   }
 
   Widget _error(BuildContext context) {
+    final code = entry.errorCode;
+    final detail = entry.errorDetail;
     return Padding(
       padding: const EdgeInsets.only(top: 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 14,
-            color: Theme.of(context).colorScheme.error,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              localizedTranslationError(entry.error ?? ''),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          Row(
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 14,
                 color: Theme.of(context).colorScheme.error,
               ),
-            ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  localizedTranslationError(entry.error ?? ''),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
           ),
+          if (code != null || detail != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 18, top: 2),
+              child: Text(
+                [
+                  if (code != null) 'HTTP $code',
+                  if (detail != null) detail,
+                ].join(' · '),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+              ),
+            ),
         ],
       ),
     );

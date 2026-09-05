@@ -127,9 +127,7 @@ class TagListActions extends StatelessWidget {
                           secondChild: const Icon(Icons.block),
                           child: const Icon(Icons.check),
                         ),
-                        label: denied
-                            ? const Text('Unblock')
-                            : const Text('Block'),
+                        label: denied ? Text('Unblock'.tr) : Text('Block'.tr),
                         onTap: () async {
                           if (denied) {
                             await client.accounts.push(

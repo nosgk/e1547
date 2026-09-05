@@ -390,9 +390,9 @@ class UserInfo extends StatelessWidget {
               Card(
                 child: ExpandablePanel(
                   controller: Expandables.of(context, 'comission'),
-                  header: const ListTile(
-                    leading: Icon(Icons.attach_money),
-                    title: Text('Comission'),
+                  header: ListTile(
+                    leading: const Icon(Icons.attach_money),
+                    title: Text('Comission'.tr),
                   ),
                   collapsed: const SizedBox.shrink(),
                   expanded: Padding(

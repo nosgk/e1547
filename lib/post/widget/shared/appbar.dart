@@ -15,18 +15,18 @@ List<PopupMenuItem<VoidCallback>> postMenuPostActions(
     PopupMenuTile(
       value: () async =>
           Share.text(context, context.read<Client>().withHost(post.link)),
-      title: 'Share',
+      title: 'Share'.tr,
       icon: Icons.share,
     ),
     if (post.file != null)
       PopupMenuTile(
         value: () => postDownloadingNotification(context, {post}),
-        title: 'Download',
+        title: 'Download'.tr,
         icon: Icons.file_download,
       ),
     PopupMenuTile(
       value: () async => launch(context.read<Client>().withHost(post.link)),
-      title: 'Browse',
+      title: 'Browse'.tr,
       icon: Icons.open_in_browser,
     ),
   ];
@@ -55,23 +55,23 @@ List<PopupMenuItem<VoidCallback>> postMenuUserActions(
       ),
     ),
     PopupMenuTile(
-      title: 'Comment',
+      title: 'Comment'.tr,
       icon: Icons.comment,
       value: () => guardWithLogin(
         context: context,
         callback: () => writeComment(context: context, postId: post.id),
-        error: 'You must be logged in to comment!',
+        error: 'You must be logged in to comment!'.tr,
       ),
     ),
     PopupMenuTile(
-      title: 'Report',
+      title: 'Report'.tr,
       icon: Icons.report,
       value: () => guardWithLogin(
         context: context,
         callback: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (context) => PostReportScreen(post: post)),
         ),
-        error: 'You must be logged in to report posts!',
+        error: 'You must be logged in to report posts!'.tr,
       ),
     ),
     PopupMenuTile(

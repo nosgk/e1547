@@ -39,7 +39,7 @@ class DenyListPage extends StatelessWidget {
               List<String> denylist = traits.denylist.toList();
               return AdaptiveScaffold(
                 appBar: DefaultAppBar(
-                  title: const Text('Blacklist'),
+                  title: Text('Blacklist'.tr),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.edit),

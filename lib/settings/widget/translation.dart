@@ -101,6 +101,19 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                 onTap: () => _pickProvider(context, value),
               ),
             ),
+            ValueListenableBuilder<int>(
+              valueListenable: context.read<Settings>().translateRateLimit,
+              builder: (context, value, child) => ListTile(
+                title: Text('Requests per minute'.tr),
+                subtitle: Text(
+                  value <= 0
+                      ? 'No rate limit'.tr
+                      : '{count} requests per minute'.trArgs({'count': value}),
+                ),
+                leading: const Icon(Icons.speed),
+                onTap: () => _pickRateLimit(context, value),
+              ),
+            ),
             const Divider(),
             ValueListenableBuilder<TranslationProvider>(
               valueListenable: context.read<Settings>().translateProvider,
@@ -116,6 +129,11 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                     url: kMicrosoftUrlTemplate,
                     headers: kMicrosoftDefaultHeaders,
                     body: kMicrosoftDefaultBody,
+                  ),
+                  TranslationProvider.azure => (
+                    url: kAzureDefaultEndpoint,
+                    headers: '{"Accept": "application/json"}',
+                    body: '[{"Text": "@text"}]',
                   ),
                   TranslationProvider.openai => (
                     url: translationConfigFromSettings(settings).openaiChatUrl,
@@ -169,6 +187,35 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                       ),
                       const Divider(),
                     ],
+                    if (provider == TranslationProvider.azure) ...[
+                      SectionHeader(
+                        indent: SectionHeader.listTileIndent,
+                        title: 'Azure Configuration'.tr,
+                      ),
+                      _SettingTextField(
+                        setting: settings.translateAzureKey,
+                        label: 'API key'.tr,
+                        hintText: '0123456789abcdef…',
+                      ),
+                      _SettingTextField(
+                        setting: settings.translateAzureEndpoint,
+                        label: 'Custom URL'.tr,
+                        defaultValue: kAzureDefaultEndpoint,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          'Region hint: add Ocp-Apim-Subscription-Region in custom headers'
+                              .tr,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: dimTextColor(context)),
+                        ),
+                      ),
+                      const Divider(),
+                    ],
                     SectionHeader(
                       indent: SectionHeader.listTileIndent,
                       title: 'Advanced customization'.tr,
@@ -191,6 +238,8 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                           settings.translateGoogleUrl,
                         TranslationProvider.microsoft =>
                           settings.translateMicrosoftUrl,
+                        TranslationProvider.azure =>
+                          settings.translateAzureEndpoint,
                         TranslationProvider.openai =>
                           settings.translateOpenaiUrl,
                       },
@@ -204,6 +253,8 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                           settings.translateGoogleHeaders,
                         TranslationProvider.microsoft =>
                           settings.translateMicrosoftHeaders,
+                        TranslationProvider.azure =>
+                          settings.translateAzureHeaders,
                         TranslationProvider.openai =>
                           settings.translateOpenaiHeaders,
                       },
@@ -218,6 +269,8 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                           settings.translateGoogleBody,
                         TranslationProvider.microsoft =>
                           settings.translateMicrosoftBody,
+                        TranslationProvider.azure =>
+                          settings.translateAzureEndpoint,
                         TranslationProvider.openai =>
                           settings.translateOpenaiBody,
                       },
@@ -414,6 +467,33 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
       ),
     );
   }
+
+  static const List<int> _rateLimitChoices = [0, 15, 30, 60, 120, 240];
+
+  Future<void> _pickRateLimit(BuildContext context, int current) async {
+    final settings = context.read<Settings>();
+    await showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text('Requests per minute'.tr),
+        children: [
+          for (final choice in _rateLimitChoices)
+            ListTile(
+              title: Text(
+                choice <= 0
+                    ? 'No rate limit'.tr
+                    : '{count} requests per minute'.trArgs({'count': choice}),
+              ),
+              trailing: choice == current ? const Icon(Icons.check) : null,
+              onTap: () {
+                settings.translateRateLimit.value = choice;
+                Navigator.of(context).maybePop();
+              },
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// A titled text field bound to a persisted string setting.
@@ -480,6 +560,21 @@ class _SettingTextFieldState extends State<_SettingTextField> {
     if (target != controller.text) {
       syncing = true;
       controller.text = target;
+      syncing = false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _SettingTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The bound notifier is swapped when the provider changes; rewire the
+    // listeners and refresh the visible text to the new setting so the
+    // advanced fields update live.
+    if (!identical(oldWidget.setting, widget.setting)) {
+      syncing = true;
+      oldWidget.setting.removeListener(_onSettingChanged);
+      widget.setting.addListener(_onSettingChanged);
+      controller.text = _effective(widget.setting.value);
       syncing = false;
     }
   }

@@ -163,3 +163,37 @@ class AndroidStretchScrollBehaviour extends ScrollBehavior {
     return super.buildOverscrollIndicator(context, child, details);
   }
 }
+
+/// Applies the user's appearance settings on top of a base [theme].
+///
+/// - [drawerWidth]: width of navigation drawers, in logical pixels.
+/// - [fontScale]: global text scale factor.
+/// - [useSystemFont]: when true, [customFontFamily] is ignored and the
+///   platform font is used.
+/// - [customFontFamily]: font family name applied app-wide; an empty value
+///   keeps the platform default.
+ThemeData applyAppearanceSettings(
+  ThemeData theme, {
+  required double drawerWidth,
+  required double fontScale,
+  required bool useSystemFont,
+  required String customFontFamily,
+}) {
+  final String? fontFamily = useSystemFont
+      ? null
+      : customFontFamily.trim().isEmpty
+      ? null
+      : customFontFamily.trim();
+  final double scale = fontScale <= 0 ? 1.0 : fontScale;
+  return theme.copyWith(
+    drawerTheme: theme.drawerTheme.copyWith(width: drawerWidth),
+    textTheme: theme.textTheme.apply(
+      fontFamily: fontFamily,
+      fontSizeFactor: scale,
+    ),
+    primaryTextTheme: theme.primaryTextTheme.apply(
+      fontFamily: fontFamily,
+      fontSizeFactor: scale,
+    ),
+  );
+}

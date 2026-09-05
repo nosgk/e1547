@@ -73,7 +73,7 @@ class _GlobalActionsBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
-                'Tasks',
+                'Tasks'.tr,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -81,13 +81,13 @@ class _GlobalActionsBar extends StatelessWidget {
             if (hasActive)
               ActionButton(
                 icon: const Icon(Icons.block),
-                label: const Text('Cancel all'),
+                label: Text('Cancel all'.tr),
                 onTap: controller.cancelAll,
               ),
             if (hasDone)
               ActionButton(
                 icon: const Icon(Icons.delete_sweep),
-                label: const Text('Clear done'),
+                label: Text('Clear done'.tr),
                 onTap: controller.clearDone,
               ),
           ],

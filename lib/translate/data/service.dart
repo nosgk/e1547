@@ -10,7 +10,7 @@ typedef TranslationResult = ({String text, String providerLabel});
 
 /// App-wide online translation service.
 ///
-/// Supports three providers, each with optional URL/header/body overrides
+/// Supports four providers, each with optional URL/header/body overrides
 /// ("advanced customization"). Templates may reference variables via
 /// `@token` placeholders:
 ///
@@ -45,6 +45,42 @@ class TranslationService {
 
   static const int _cacheLimit = 500;
 
+  // --- rate limiting ---------------------------------------------------------
+
+  /// Maximum requests per minute; 0 disables limiting.
+  int _requestsPerMinute = 0;
+  final List<DateTime> _requestTimes = [];
+
+  /// Current client-side request quota (requests per minute; 0 = unlimited).
+  int get requestsPerMinute => _requestsPerMinute;
+
+  /// Sets the client-side request quota (requests per minute; 0 = unlimited).
+  /// Applies to every outgoing translation request, including URL-chunked
+  /// Google requests.
+  set requestsPerMinute(int value) =>
+      _requestsPerMinute = value < 0 ? 0 : value;
+
+  /// Waits until the sliding one-minute window has room for another request.
+  Future<void> _awaitRateLimit() async {
+    final limit = _requestsPerMinute;
+    if (limit <= 0) return;
+    while (true) {
+      final now = DateTime.now();
+      _requestTimes.removeWhere(
+        (time) => now.difference(time) >= const Duration(minutes: 1),
+      );
+      if (_requestTimes.length < limit) {
+        _requestTimes.add(now);
+        return;
+      }
+      final oldest = _requestTimes.first;
+      final wait = const Duration(minutes: 1) - now.difference(oldest);
+      await Future<void>.delayed(
+        wait <= Duration.zero ? const Duration(milliseconds: 50) : wait,
+      );
+    }
+  }
+
   /// Translates [text] with the given [config].
   ///
   /// Returns the translated text plus a short provider label for the
@@ -67,6 +103,7 @@ class TranslationService {
     final result = switch (config.provider) {
       TranslationProvider.google => await _translateGoogle(text, config),
       TranslationProvider.microsoft => await _translateMicrosoft(text, config),
+      TranslationProvider.azure => await _translateAzure(text, config),
       TranslationProvider.openai => await _translateOpenAi(text, config),
     };
 
@@ -110,7 +147,7 @@ class TranslationService {
     } on TranslationException {
       rethrow;
     } on DioException catch (error) {
-      throw TranslationException(_dioErrorMessage(error));
+      throw _dioError(error);
     } on Object catch (error) {
       throw TranslationException('$error');
     }
@@ -125,6 +162,7 @@ class TranslationService {
   String _providerLabel(TranslationConfig config) => switch (config.provider) {
     TranslationProvider.google => TranslationProvider.google.label,
     TranslationProvider.microsoft => TranslationProvider.microsoft.label,
+    TranslationProvider.azure => TranslationProvider.azure.label,
     TranslationProvider.openai => config.model,
   };
 
@@ -145,6 +183,7 @@ class TranslationService {
     final parts = <String>[];
     try {
       for (final chunk in chunks) {
+        await _awaitRateLimit();
         final url = renderUrlTemplate(urlTemplate, {
           ..._baseVars(config),
           'text': chunk,
@@ -159,7 +198,7 @@ class TranslationService {
     } on TranslationException {
       rethrow;
     } on DioException catch (error) {
-      throw TranslationException(_dioErrorMessage(error));
+      throw _dioError(error);
     } on Object catch (error) {
       throw TranslationException('$error');
     }
@@ -210,6 +249,7 @@ class TranslationService {
       vars: {..._baseVars(config), 'toLang': target},
     );
     try {
+      await _awaitRateLimit();
       final response = await _dio.post(
         url,
         data: renderJsonTemplate(bodyTemplate, {
@@ -224,7 +264,7 @@ class TranslationService {
     } on TranslationException {
       rethrow;
     } on DioException catch (error) {
-      throw TranslationException(_dioErrorMessage(error));
+      throw _dioError(error);
     } on Object catch (error) {
       throw TranslationException('$error');
     }
@@ -254,6 +294,44 @@ class TranslationService {
   };
 
   // ---------------------------------------------------------------------------
+  // Azure Cognitive Translator (API key required)
+  // ---------------------------------------------------------------------------
+
+  Future<String> _translateAzure(String text, TranslationConfig config) async {
+    if (config.azureApiKey.trim().isEmpty) {
+      throw const TranslationException('no API key configured');
+    }
+    final target = _microsoftLanguage(config.targetLanguage);
+    final url =
+        '${config.azureTranslateUrl}'
+        '?api-version=3.0&to=${Uri.encodeComponent(target)}&textType=plain';
+    final headers = {
+      ..._effectiveHeaders(config, const {'Accept': 'application/json'}),
+      'Ocp-Apim-Subscription-Key': config.azureApiKey,
+      'Content-Type': 'application/json',
+    };
+    try {
+      await _awaitRateLimit();
+      final response = await _dio.post(
+        url,
+        data: renderJsonTemplate(
+          _effectiveBody(config, '[{"Text": "@text"}]'),
+          {..._baseVars(config), 'toLang': target, 'text': text},
+        ),
+        options: Options(headers: headers),
+      );
+      _validateStatus(response);
+      return _parseMicrosoftResponse(response.data);
+    } on TranslationException {
+      rethrow;
+    } on DioException catch (error) {
+      throw _dioError(error);
+    } on Object catch (error) {
+      throw TranslationException('$error');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // OpenAI-compatible chat APIs
   // ---------------------------------------------------------------------------
 
@@ -281,6 +359,7 @@ class TranslationService {
       'userPrompt': _renderUserPrompt(text, config),
     });
     try {
+      await _awaitRateLimit();
       final response = await _dio.post(
         url,
         data: body,
@@ -291,7 +370,7 @@ class TranslationService {
     } on TranslationException {
       rethrow;
     } on DioException catch (error) {
-      throw TranslationException(_dioErrorMessage(error));
+      throw _dioError(error);
     } on Object catch (error) {
       throw TranslationException('$error');
     }
@@ -370,6 +449,24 @@ class TranslationService {
     };
     rendered.putIfAbsent('Content-Type', () => 'application/json');
     return rendered;
+  }
+
+  /// Effective custom headers, when configured; otherwise [defaults].
+  Map<String, String> _effectiveHeaders(
+    TranslationConfig config,
+    Map<String, String> defaults,
+  ) {
+    final custom = config.customHeaders?.trim() ?? '';
+    if (custom.isEmpty) return defaults;
+    try {
+      final decoded = jsonDecode(custom);
+      if (decoded is Map) {
+        return {for (final e in decoded.entries) '${e.key}': '${e.value}'};
+      }
+    } on FormatException {
+      // fall through to defaults on malformed JSON
+    }
+    return defaults;
   }
 
   Map<String, String> _baseVars(TranslationConfig config) => {
@@ -458,13 +555,46 @@ class TranslationService {
   void _validateStatus(Response response) {
     final status = response.statusCode ?? 0;
     if (status >= 200 && status < 300) return;
+    final detail = _responseDetail(response);
     if (status == 401 || status == 403) {
-      throw const TranslationException('invalid API key');
+      throw TranslationException(
+        'invalid API key',
+        code: status,
+        detail: detail,
+      );
     }
     if (status == 429) {
-      throw const TranslationException('rate limited');
+      throw TranslationException('rate limited', code: status, detail: detail);
     }
-    throw TranslationException('server error ($status)');
+    throw TranslationException(
+      'server error ($status)',
+      code: status,
+      detail: detail,
+    );
+  }
+
+  /// First 200 characters of an error response body, for diagnostics.
+  String? _responseDetail(Response response) {
+    final data = response.data;
+    final String body;
+    if (data is String) {
+      body = data;
+    } else if (data != null) {
+      body = jsonEncode(data);
+    } else {
+      return null;
+    }
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) return null;
+    return trimmed.length <= 200 ? trimmed : '${trimmed.substring(0, 200)}…';
+  }
+
+  TranslationException _dioError(DioException error) {
+    final response = error.response;
+    final status = response?.statusCode;
+    final detail = response == null ? null : _responseDetail(response);
+    final message = _dioErrorMessage(error);
+    return TranslationException(message, code: status, detail: detail);
   }
 
   String _dioErrorMessage(DioException error) {

@@ -21,9 +21,11 @@ Future<void> guardWithLogin({
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 3),
-        content: Text(error ?? 'You must be logged in to perform this action.'),
+        content: Text(
+          error ?? 'You must be logged in to perform this action.'.tr,
+        ),
         action: SnackBarAction(
-          label: 'Choose identity',
+          label: 'Choose identity'.tr,
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const IdentitiesPage()),
           ),

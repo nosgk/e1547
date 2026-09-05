@@ -9,8 +9,11 @@ part 'params.freezed.dart';
 
 enum PostOrder {
   newest('new'),
+  oldest('id_asc'),
   score('score'),
   favcount('favcount'),
+  comment('comment_count'),
+  hot('hot'),
   rank('rank'),
   random('random');
 
@@ -79,8 +82,11 @@ abstract class PostParams with _$PostParams {
         valueMapper: (value) => value.value,
         nameMapper: (value) => switch (value) {
           PostOrder.newest => 'New'.tr,
+          PostOrder.oldest => 'Oldest'.tr,
           PostOrder.score => 'Score'.tr,
           PostOrder.favcount => 'Favorites'.tr,
+          PostOrder.comment => 'Comments'.tr,
+          PostOrder.hot => 'Hot'.tr,
           PostOrder.rank => 'Rank'.tr,
           PostOrder.random => 'Random'.tr,
         },

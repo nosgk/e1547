@@ -2,12 +2,14 @@
 enum TranslationProvider {
   google,
   microsoft,
+  azure,
   openai;
 
   /// Display name used in UI and "translated by" captions.
   String get label => switch (this) {
     TranslationProvider.google => 'Google Translate',
     TranslationProvider.microsoft => 'Microsoft Translator',
+    TranslationProvider.azure => 'Azure Translator',
     TranslationProvider.openai => 'AI Translation',
   };
 }
@@ -68,6 +70,13 @@ const String kOpenAiBodyTemplate =
 const String kOpenAiDefaultHeaders =
     '{"Authorization": "Bearer @apiKey", "Accept": "application/json"}';
 
+/// Default request quota for the translation service, in requests per
+/// minute. 0 disables limiting.
+const int kDefaultTranslationRateLimit = 60;
+
+const String kAzureDefaultEndpoint =
+    'https://api.cognitive.microsofttranslator.com/translate';
+
 /// Immutable snapshot of everything the translation service needs to run.
 class TranslationConfig {
   const TranslationConfig({
@@ -78,6 +87,8 @@ class TranslationConfig {
     this.model = kDefaultOpenAiModel,
     this.systemPrompt = kDefaultTranslationSystemPrompt,
     this.userPrompt = kDefaultTranslationUserPrompt,
+    this.azureApiKey = '',
+    this.azureEndpoint = kAzureDefaultEndpoint,
     this.customUrl,
     this.customHeaders,
     this.customBody,
@@ -95,6 +106,10 @@ class TranslationConfig {
   final String systemPrompt;
   final String userPrompt;
 
+  // Azure Cognitive settings.
+  final String azureApiKey;
+  final String azureEndpoint;
+
   // Advanced per-provider overrides; null or empty means "use the default".
   final String? customUrl;
   final String? customHeaders;
@@ -106,6 +121,23 @@ class TranslationConfig {
 
   String get openaiModelsUrl =>
       baseUrl.endsWith('/') ? '${baseUrl}models' : '$baseUrl/models';
+
+  /// Normalizes the Azure endpoint per the API conventions: a bare resource
+  /// host gets the translator path appended, a bare /translate suffix is
+  /// used as-is.
+  String get azureTranslateUrl {
+    final endpoint = azureEndpoint.trim().isEmpty
+        ? kAzureDefaultEndpoint
+        : azureEndpoint.trim();
+    if (endpoint.toLowerCase().endsWith('/translate')) return endpoint;
+    final uri = Uri.tryParse(endpoint);
+    if (uri != null &&
+        uri.host.toLowerCase().endsWith('cognitiveservices.azure.com')) {
+      return '${endpoint.replaceAll(RegExp(r'/+$'), '')}'
+          '/translator/text/v3.0/translate';
+    }
+    return '${endpoint.replaceAll(RegExp(r'/+$'), '')}/translate';
+  }
 }
 
 /// Roughly detects text that is already Chinese, so auto translation can
@@ -128,11 +160,18 @@ bool translationLooksChinese(String text) {
   return otherScripts == 0 && total > 0 && han / total > 0.25;
 }
 
-/// Error with a user-presentable message.
+/// Error with a user-presentable message, optionally carrying the HTTP
+/// status code and a short server response excerpt for diagnostics.
 class TranslationException implements Exception {
-  const TranslationException(this.message);
+  const TranslationException(this.message, {this.code, this.detail});
 
   final String message;
+
+  /// HTTP status code, when the failure came from a response.
+  final int? code;
+
+  /// Short excerpt of the server error body, when available.
+  final String? detail;
 
   @override
   String toString() => message;

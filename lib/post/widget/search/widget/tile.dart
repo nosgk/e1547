@@ -8,6 +8,7 @@ import 'package:e1547/post/post.dart';
 import 'package:e1547/query/query.dart';
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
 class PostImageTile extends StatelessWidget {
@@ -32,6 +33,22 @@ class PostImageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool? previewGifAutoplay;
+    try {
+      previewGifAutoplay =
+          post.ext == 'gif' &&
+          context.read<Settings>().previewAutoplayGifs.value;
+    } on Object {
+      previewGifAutoplay = false;
+    }
+    bool previewVideoAutoplay = false;
+    try {
+      previewVideoAutoplay =
+          post.type == PostType.video &&
+          context.read<Settings>().previewAutoplayVideos.value;
+    } on Object {
+      previewVideoAutoplay = false;
+    }
     return Card(
       clipBehavior: Clip.antiAlias,
       child: SelectionItemOverlay(
@@ -48,14 +65,18 @@ class PostImageTile extends StatelessWidget {
                     post: post,
                     child: Hero(
                       tag: post.link,
-                      child: PostImageWidget(
-                        post: post,
-                        size: size ?? PostImageSize.sample,
-                        fit: fit ?? BoxFit.cover,
-                        showProgress: showProgress ?? false,
-                        withLowRes: withLowRes ?? false,
-                        cacheSize: context.watch<ImageCacheSize?>()?.size,
-                      ),
+                      child: previewVideoAutoplay
+                          ? PreviewVideoAutoplay(post: post, fit: fit)
+                          : PostImageWidget(
+                              post: post,
+                              size: previewGifAutoplay == true
+                                  ? PostImageSize.file
+                                  : (size ?? PostImageSize.sample),
+                              fit: fit ?? BoxFit.cover,
+                              showProgress: showProgress ?? false,
+                              withLowRes: withLowRes ?? false,
+                              cacheSize: context.watch<ImageCacheSize?>()?.size,
+                            ),
                     ),
                   ),
                 ),
@@ -368,7 +389,7 @@ class PostFeedTile extends StatelessWidget {
           if (post.file != null)
             PopupMenuTile(
               value: () => postDownloadingNotification(context, {post}),
-              title: 'Download',
+              title: 'Download'.tr,
               icon: Icons.file_download,
             ),
           PopupMenuTile(
@@ -439,15 +460,31 @@ class PostFeedTile extends StatelessWidget {
                     ],
                   ),
                   if (post.description.isNotEmpty)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: DText(post.description.ellipse(200)),
+                    TranslatableHost(
+                      text: post.description,
+                      builder: (context, translation) => Row(
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  DText(post.description.ellipse(200)),
+                                  TranslationDisplay(
+                                    entry: translation,
+                                    compact: true,
+                                  ),
+                                  TranslationButton(
+                                    entry: translation,
+                                    compact: true,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   image(),
                   const SizedBox(height: 8),

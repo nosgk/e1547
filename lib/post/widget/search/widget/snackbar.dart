@@ -1,3 +1,4 @@
+import 'package:e1547/client/client.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
@@ -28,7 +29,8 @@ Future<void> postDownloadingNotification(
 }
 
 /// Enqueues favorite or unfavorite tasks for [items], skipping ones already in
-/// the target state.
+/// the target state. Requires a login; without one the API would reject every
+/// task, so the user gets immediate feedback instead of a pile of failures.
 Future<void> postFavoritingNotification(
   BuildContext context,
   Set<Post> items,
@@ -36,6 +38,15 @@ Future<void> postFavoritingNotification(
 ) async {
   if (items.isEmpty) return;
   final TasksController controller = context.read<TasksController>();
+  if (!context.read<Client>().hasLogin) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text('Log in to manage favorites'.tr),
+      ),
+    );
+    return;
+  }
   final TaskAction action = isLiked
       ? TaskAction.unfavorite
       : TaskAction.favorite;

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:e1547/client/client.dart';
 import 'package:e1547/logs/logs.dart';
+import 'package:e1547/post/post.dart' show PostQuerying;
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/task/task.dart';
@@ -254,6 +256,7 @@ class TasksController extends ChangeNotifier {
         await _runDownload(task);
       case TaskAction.favorite:
         await client.posts.addFavorite(task.postId);
+        _updateCachedFavorite(task.postId, true);
         if (settings.upvoteFavs.value) {
           try {
             await client.posts.vote(
@@ -273,6 +276,27 @@ class TasksController extends ChangeNotifier {
         }
       case TaskAction.unfavorite:
         await client.posts.removeFavorite(task.postId);
+        _updateCachedFavorite(task.postId, false);
+    }
+  }
+
+  /// Mirrors a completed favorite/unfavorite into the post cache so open
+  /// pages reflect the new state immediately instead of staying stale until
+  /// the next refetch.
+  void _updateCachedFavorite(int postId, bool favorited) {
+    try {
+      client.posts.postCache.update(postId, (post) {
+        final count = post.favCount + (favorited ? 1 : -1);
+        return post.copyWith(isFavorited: favorited, favCount: max(count, 0));
+      });
+    } on Object catch (e, s) {
+      // Cache sync is cosmetic; the API call itself already succeeded.
+      _logger.warn(
+        'Failed to update cached favorite state for post {post}',
+        {'post': postId},
+        e,
+        s,
+      );
     }
   }
 

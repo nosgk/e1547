@@ -25,6 +25,7 @@ Dio createDefaultDio(Identity identity, {CachedQuery? queryCache}) {
   dio.httpClientAdapter = NativeAdapter();
   dio.interceptors.add(NewlineReplaceInterceptor());
   dio.interceptors.add(LoggingDioInterceptor());
+  dio.interceptors.add(E621RetryInterceptor(dio));
   if (queryCache != null) {
     dio.queryCache = queryCache;
   }

@@ -118,7 +118,7 @@ class TagInput extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  NumberFormat.compact().format(value.count),
+                  NumberFormat.decimalPattern().format(value.count),
                   style: const TextStyle(fontSize: 16),
                 ),
               ),

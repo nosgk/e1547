@@ -180,7 +180,7 @@ Future<void> updateFollowNotifications({
         );
         await notifications.show(
           id: followsBackgroundTaskKey.hashCode,
-          title: 'New posts!',
+          title: 'New posts!'.tr,
           notificationDetails: notificationDetails,
           payload: json.encode(
             NotificationPayload(identity: identity, type: 'follow'),

@@ -26,7 +26,7 @@ Future<void> showTopicPrompt({
           icon: const Icon(Icons.share),
           onTap: () async =>
               Share.text(context, context.read<Client>().withHost(topic.link)),
-          label: const Text('Share'),
+          label: Text('Share'.tr),
         ),
       ],
     ),

@@ -149,7 +149,7 @@ class _ReasonReportScreenState extends State<ReasonReportScreen> {
                       ],
                     ),
                   ),
-                  const ReportFormHeader(title: Text('Report')),
+                  ReportFormHeader(title: Text('Report'.tr)),
                   ReportFormReason(
                     controller: reasonController,
                     isLoading: isLoading,

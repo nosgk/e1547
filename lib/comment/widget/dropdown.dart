@@ -18,15 +18,15 @@ class CommentListDropdown extends StatelessWidget {
       onSelected: (value) => value(),
       itemBuilder: (context) => [
         PopupMenuTile(
-          title: 'Refresh',
+          title: 'Refresh'.tr,
           icon: Icons.refresh,
           value: () => query.invalidate(),
         ),
         PopupMenuTile(
           icon: Icons.sort,
           title: controller.value.order == CommentOrder.oldest
-              ? 'Newest first'
-              : 'Oldest first',
+              ? 'Newest first'.tr
+              : 'Oldest first'.tr,
           value: () => controller.update(
             (p) => p.copyWith(
               order: p.order == CommentOrder.oldest

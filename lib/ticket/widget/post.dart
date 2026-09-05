@@ -148,7 +148,7 @@ class _PostReportScreenState extends State<PostReportScreen> {
                     isLoading: isLoading,
                   ),
                   ReportFormHeader(
-                    title: const Text('Report'),
+                    title: Text('Report'.tr),
                     icon: IconButton(
                       onPressed: () => showTagSearchPrompt(
                         context: context,
