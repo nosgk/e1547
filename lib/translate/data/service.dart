@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:e1547/translate/data/profile.dart';
 import 'package:e1547/translate/data/translate.dart';
 import 'package:flutter/foundation.dart';
 import 'package:native_dio_adapter/native_dio_adapter.dart';
@@ -8,28 +10,57 @@ import 'package:native_dio_adapter/native_dio_adapter.dart';
 /// Result of a successful translation.
 typedef TranslationResult = ({String text, String providerLabel});
 
+/// Diagnostic record of one request-configurator test run: what was sent,
+/// what came back and what the parse rule produced.
+class TranslationProbe {
+  const TranslationProbe({
+    this.status,
+    this.elapsedMs = 0,
+    this.parsed,
+    this.rawBody,
+    this.error,
+    this.errorDetail,
+    this.requestUrl,
+    this.requestHeaders = const {},
+    this.requestBody,
+  });
+
+  /// HTTP status code, when a response arrived.
+  final int? status;
+
+  /// Wall-clock duration of the request in milliseconds.
+  final int elapsedMs;
+
+  /// Translation extracted by the parse rule, on success.
+  final String? parsed;
+
+  /// Raw response body, for inspection.
+  final String? rawBody;
+
+  /// User-presentable error message, on failure.
+  final String? error;
+
+  /// Extra error context (HTTP status, server excerpt).
+  final String? errorDetail;
+
+  /// The exact request that was sent.
+  final String? requestUrl;
+  final Map<String, String> requestHeaders;
+  final String? requestBody;
+}
+
 /// App-wide online translation service.
 ///
-/// Supports four providers, each with optional URL/header/body overrides
-/// ("advanced customization"). Templates may reference variables via
-/// `@token` placeholders:
-///
-/// - `@text`      the text to translate
-/// - `@toLang`    the target language code (or native name for AI prompts)
-/// - `@fromLang`  the source language, always `auto`
-/// - `@apiKey`    the configured API key
-/// - `@model`     the configured model name
-/// - `@systemPrompt`, `@userPrompt`  the rendered AI prompts
-///
-/// In URLs, values are percent-encoded; in JSON bodies, quoted `"@token"`s
-/// are replaced with the JSON-encoded value.
+/// Every provider — built-in or user-configured — runs through one generic
+/// executor driven by a [TranslationRequestProfile]. The profile describes
+/// the complete HTTP request (method, URL, query, headers, body) and how to
+/// extract the translation from the response; nothing is added or changed
+/// behind the user's back.
 class TranslationService {
   TranslationService._() {
     _dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 15),
         validateStatus: (status) => true,
       ),
     );
@@ -45,41 +76,67 @@ class TranslationService {
 
   static const int _cacheLimit = 500;
 
-  // --- rate limiting ---------------------------------------------------------
+  // --- performance & rate limiting -------------------------------------------
 
-  /// Maximum requests per minute; 0 disables limiting.
-  int _requestsPerMinute = 0;
-  final List<DateTime> _requestTimes = [];
+  int _maxConcurrency = kDefaultTranslateConcurrency;
+  int _intervalMs = kDefaultTranslateIntervalMs;
+  int _timeoutSeconds = kDefaultTranslateTimeoutSeconds;
 
-  /// Current client-side request quota (requests per minute; 0 = unlimited).
-  int get requestsPerMinute => _requestsPerMinute;
+  int _inFlight = 0;
+  final List<Completer<void>> _slotWaiters = [];
+  DateTime _lastRequestStart = DateTime.fromMillisecondsSinceEpoch(0);
 
-  /// Sets the client-side request quota (requests per minute; 0 = unlimited).
-  /// Applies to every outgoing translation request, including URL-chunked
-  /// Google requests.
-  set requestsPerMinute(int value) =>
-      _requestsPerMinute = value < 0 ? 0 : value;
+  /// Maximum number of translation requests in flight at the same time.
+  int get maxConcurrency => _maxConcurrency;
+  set maxConcurrency(int value) => _maxConcurrency = value < 1 ? 1 : value;
 
-  /// Waits until the sliding one-minute window has room for another request.
-  Future<void> _awaitRateLimit() async {
-    final limit = _requestsPerMinute;
-    if (limit <= 0) return;
-    while (true) {
-      final now = DateTime.now();
-      _requestTimes.removeWhere(
-        (time) => now.difference(time) >= const Duration(minutes: 1),
-      );
-      if (_requestTimes.length < limit) {
-        _requestTimes.add(now);
-        return;
-      }
-      final oldest = _requestTimes.first;
-      final wait = const Duration(minutes: 1) - now.difference(oldest);
-      await Future<void>.delayed(
-        wait <= Duration.zero ? const Duration(milliseconds: 50) : wait,
-      );
+  /// Minimum interval between two request starts, in milliseconds.
+  int get requestIntervalMs => _intervalMs;
+  set requestIntervalMs(int value) => _intervalMs = value < 0 ? 0 : value;
+
+  /// Per-request timeout in seconds.
+  int get requestTimeoutSeconds => _timeoutSeconds;
+  set requestTimeoutSeconds(int value) =>
+      _timeoutSeconds = value < 1 ? kDefaultTranslateTimeoutSeconds : value;
+
+  Duration get _timeout => Duration(seconds: _timeoutSeconds);
+
+  /// Takes a concurrency slot, waiting until one frees up.
+  Future<void> _acquireSlot() async {
+    if (_inFlight < _maxConcurrency) {
+      _inFlight++;
+      return;
     }
+    final completer = Completer<void>();
+    _slotWaiters.add(completer);
+    await completer.future;
   }
+
+  /// Hands the slot to the next waiter or gives it back.
+  void _releaseSlot() {
+    if (_slotWaiters.isNotEmpty) {
+      _slotWaiters.removeAt(0).complete();
+      return;
+    }
+    _inFlight--;
+  }
+
+  /// Enforces the configured minimum interval between request starts.
+  Future<void> _awaitInterval() async {
+    if (_intervalMs <= 0) {
+      _lastRequestStart = DateTime.now();
+      return;
+    }
+    final wait =
+        _intervalMs -
+        DateTime.now().difference(_lastRequestStart).inMilliseconds;
+    if (wait > 0) {
+      await Future<void>.delayed(Duration(milliseconds: wait));
+    }
+    _lastRequestStart = DateTime.now();
+  }
+
+  // --- public API -------------------------------------------------------------
 
   /// Translates [text] with the given [config].
   ///
@@ -100,12 +157,7 @@ class TranslationService {
       return (text: cached, providerLabel: _providerLabel(config));
     }
 
-    final result = switch (config.provider) {
-      TranslationProvider.google => await _translateGoogle(text, config),
-      TranslationProvider.microsoft => await _translateMicrosoft(text, config),
-      TranslationProvider.azure => await _translateAzure(text, config),
-      TranslationProvider.openai => await _translateOpenAi(text, config),
-    };
+    final result = await _runProfile(text, config, null);
 
     if (_cache.length >= _cacheLimit) {
       _cache.remove(_cache.keys.first);
@@ -116,16 +168,13 @@ class TranslationService {
 
   /// Lists model ids from an OpenAI-compatible `/models` endpoint.
   Future<List<String>> fetchModels(TranslationConfig config) async {
-    final headers = _requestHeaders(
-      config,
-      const {'Authorization': 'Bearer @apiKey', 'Accept': 'application/json'},
-      vars: {
-        'apiKey': config.apiKey,
-        'model': config.model,
-        'toLang': config.targetLanguage,
-      },
-      requireApiKey: true,
-    );
+    if (config.apiKey.trim().isEmpty) {
+      throw const TranslationException('no API key configured');
+    }
+    final headers = {
+      'Authorization': 'Bearer ${config.apiKey}',
+      'Accept': 'application/json',
+    };
     try {
       final response = await _dio.get(
         config.openaiModelsUrl,
@@ -153,373 +202,209 @@ class TranslationService {
     }
   }
 
-  /// Translates a short fixed phrase to verify the configuration works.
-  Future<String> testConnection(TranslationConfig config) async {
-    final result = await translate(text: 'Hello, world!', config: config);
-    return result.text;
+  /// Runs one request exactly like [translate] would, but captures the
+  /// rendered request, the raw response and the parse outcome instead of
+  /// throwing. Used by the request configurator's test panel.
+  Future<TranslationProbe> probe(TranslationConfig config, String text) async {
+    final log = _ProbeLog();
+    final watch = Stopwatch()..start();
+    try {
+      final parsed = await _runProfile(text, config, log);
+      watch.stop();
+      return TranslationProbe(
+        status: log.status,
+        elapsedMs: watch.elapsedMilliseconds,
+        parsed: parsed,
+        rawBody: log.rawBody,
+        requestUrl: log.requestUrl,
+        requestHeaders: log.requestHeaders ?? const {},
+        requestBody: log.requestBody,
+      );
+    } on TranslationException catch (error) {
+      watch.stop();
+      return TranslationProbe(
+        status: log.status ?? error.code,
+        elapsedMs: watch.elapsedMilliseconds,
+        rawBody: log.rawBody,
+        error: error.message,
+        errorDetail: error.detail,
+        requestUrl: log.requestUrl,
+        requestHeaders: log.requestHeaders ?? const {},
+        requestBody: log.requestBody,
+      );
+    } on Object catch (error) {
+      watch.stop();
+      return TranslationProbe(
+        status: log.status,
+        elapsedMs: watch.elapsedMilliseconds,
+        rawBody: log.rawBody,
+        error: '$error',
+        requestUrl: log.requestUrl,
+        requestHeaders: log.requestHeaders ?? const {},
+        requestBody: log.requestBody,
+      );
+    }
   }
 
   String _providerLabel(TranslationConfig config) => switch (config.provider) {
     TranslationProvider.google => TranslationProvider.google.label,
+    TranslationProvider.googleChrome => TranslationProvider.googleChrome.label,
     TranslationProvider.microsoft => TranslationProvider.microsoft.label,
     TranslationProvider.azure => TranslationProvider.azure.label,
     TranslationProvider.openai => config.model,
   };
 
   // ---------------------------------------------------------------------------
-  // Google (unofficial free endpoint)
+  // Generic profile executor
   // ---------------------------------------------------------------------------
 
-  static const String _googleUrlTemplate =
-      'https://translate.googleapis.com/translate_a/single'
-      '?client=gtx&sl=auto&tl=@toLang&dt=t&q=@text';
+  void _checkProviderKey(TranslationConfig config) {
+    final missing = switch (config.provider) {
+      TranslationProvider.openai => config.apiKey.trim().isEmpty,
+      TranslationProvider.azure => config.azureApiKey.trim().isEmpty,
+      _ => false,
+    };
+    if (missing) {
+      throw const TranslationException('no API key configured');
+    }
+  }
 
-  Future<String> _translateGoogle(String text, TranslationConfig config) async {
-    final urlTemplate = _effectiveUrl(config, _googleUrlTemplate);
-    final headers = _requestHeaders(config, const {}, vars: _baseVars(config));
+  Map<String, String> _baseVars(TranslationConfig config, String text) =>
+      translationTemplateVars(config, text);
+
+  /// Executes the provider profile: renders the request exactly as
+  /// configured, performs it (chunked for long GET texts) and extracts the
+  /// translation with the configured parse rule.
+  Future<String> _runProfile(
+    String text,
+    TranslationConfig config,
+    _ProbeLog? log,
+  ) async {
+    _checkProviderKey(config);
+    final profile = config.profile;
+    final vars = _baseVars(config, text);
+    final headers = {
+      for (final entry in profile.headers)
+        if (entry.key.trim().isNotEmpty)
+          entry.key.trim(): renderPlainTemplate(entry.value, vars),
+    };
+    final contentType = profile.effectiveContentType();
+    if (contentType != null) headers['Content-Type'] = contentType;
+
     // GET URLs are length limited; long texts are split on line/sentence
     // boundaries and translated chunk by chunk.
-    final chunks = splitForUrl(text, 1200);
+    final chunks = profile.isGet ? splitForUrl(text, 1200) : [text];
     final parts = <String>[];
     try {
       for (final chunk in chunks) {
-        await _awaitRateLimit();
-        final url = renderUrlTemplate(urlTemplate, {
-          ..._baseVars(config),
-          'text': chunk,
-        });
-        final response = await _dio.get(
-          url,
-          options: Options(headers: headers),
-        );
-        _validateStatus(response);
-        parts.add(_parseGoogleResponse(response.data));
+        final chunkVars = {...vars, 'text': chunk};
+        final url = buildRequestUrl(profile, chunkVars);
+        final body = profile.isGet
+            ? null
+            : renderJsonTemplate(profile.body, chunkVars);
+        if (log != null) {
+          log.requestUrl = url;
+          log.requestHeaders = Map.of(headers);
+          log.requestBody = body;
+        }
+        await _acquireSlot();
+        try {
+          await _awaitInterval();
+          final response = await _dio.request<dynamic>(
+            url,
+            data: body,
+            options: Options(
+              method: profile.isGet ? 'GET' : 'POST',
+              headers: headers,
+              connectTimeout: _timeout,
+              sendTimeout: _timeout,
+              receiveTimeout: _timeout,
+            ),
+          );
+          if (log != null) {
+            log.status = response.statusCode;
+            log.rawBody = _responseBody(response);
+          }
+          _validateStatus(response);
+          parts.add(_extractTranslation(response, profile));
+        } finally {
+          _releaseSlot();
+        }
       }
     } on TranslationException {
       rethrow;
     } on DioException catch (error) {
       throw _dioError(error);
+    } on FormatException catch (error) {
+      throw TranslationException(
+        'unexpected response format',
+        detail: error.message,
+      );
     } on Object catch (error) {
       throw TranslationException('$error');
     }
     return parts.join();
   }
 
-  String _parseGoogleResponse(Object? data) {
-    // [[["translated","original",...],["translated","original",...]],...]
-    if (data is! List || data.isEmpty || data[0] is! List) {
-      throw const TranslationException('unexpected response format');
-    }
-    final buffer = StringBuffer();
-    for (final segment in data[0] as List) {
-      if (segment is List && segment.isNotEmpty) {
-        buffer.write('${segment[0]}');
-      }
-    }
-    final result = buffer.toString();
-    if (result.isEmpty) {
-      throw const TranslationException('empty translation');
-    }
-    return result;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Microsoft (free Edge endpoint)
-  // ---------------------------------------------------------------------------
-
-  static const String _microsoftUrlTemplate =
-      'https://edge.microsoft.com/translate/translatetext?from=&to=@toLang';
-  static const String _microsoftBodyTemplate = '["@text"]';
-
-  Future<String> _translateMicrosoft(
-    String text,
-    TranslationConfig config,
-  ) async {
-    final urlTemplate = _effectiveUrl(config, _microsoftUrlTemplate);
-    final bodyTemplate = _effectiveBody(config, _microsoftBodyTemplate);
-    final target = _microsoftLanguage(config.targetLanguage);
-    final url = renderUrlTemplate(urlTemplate, {
-      ..._baseVars(config),
-      'toLang': target,
-      'text': text,
-    });
-    final headers = _requestHeaders(
-      config,
-      const {'Accept': 'application/json'},
-      vars: {..._baseVars(config), 'toLang': target},
-    );
-    try {
-      await _awaitRateLimit();
-      final response = await _dio.post(
-        url,
-        data: renderJsonTemplate(bodyTemplate, {
-          ..._baseVars(config),
-          'toLang': target,
-          'text': text,
-        }),
-        options: Options(headers: headers),
-      );
-      _validateStatus(response);
-      return _parseMicrosoftResponse(response.data);
-    } on TranslationException {
-      rethrow;
-    } on DioException catch (error) {
-      throw _dioError(error);
-    } on Object catch (error) {
-      throw TranslationException('$error');
-    }
-  }
-
-  String _parseMicrosoftResponse(Object? data) {
-    // [{"translations":[{"text":"..."}]}, ...]
-    if (data is! List || data.isEmpty || data[0] is! Map) {
-      throw const TranslationException('unexpected response format');
-    }
-    final translations = (data[0] as Map)['translations'];
-    if (translations is! List || translations.isEmpty) {
-      throw const TranslationException('unexpected response format');
-    }
-    final first = translations[0];
-    final translated = first is Map ? first['text'] : null;
-    if (translated is! String || translated.isEmpty) {
-      throw const TranslationException('empty translation');
-    }
-    return translated;
-  }
-
-  String _microsoftLanguage(String code) => switch (code) {
-    'zh-CN' => 'zh-Hans',
-    'zh-TW' => 'zh-Hant',
-    _ => code,
-  };
-
-  // ---------------------------------------------------------------------------
-  // Azure Cognitive Translator (API key required)
-  // ---------------------------------------------------------------------------
-
-  Future<String> _translateAzure(String text, TranslationConfig config) async {
-    if (config.azureApiKey.trim().isEmpty) {
-      throw const TranslationException('no API key configured');
-    }
-    final target = _microsoftLanguage(config.targetLanguage);
-    final url =
-        '${config.azureTranslateUrl}'
-        '?api-version=3.0&to=${Uri.encodeComponent(target)}&textType=plain';
-    final headers = {
-      ..._effectiveHeaders(config, const {'Accept': 'application/json'}),
-      'Ocp-Apim-Subscription-Key': config.azureApiKey,
-      'Content-Type': 'application/json',
-    };
-    try {
-      await _awaitRateLimit();
-      final response = await _dio.post(
-        url,
-        data: renderJsonTemplate(
-          _effectiveBody(config, '[{"Text": "@text"}]'),
-          {..._baseVars(config), 'toLang': target, 'text': text},
-        ),
-        options: Options(headers: headers),
-      );
-      _validateStatus(response);
-      return _parseMicrosoftResponse(response.data);
-    } on TranslationException {
-      rethrow;
-    } on DioException catch (error) {
-      throw _dioError(error);
-    } on Object catch (error) {
-      throw TranslationException('$error');
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // OpenAI-compatible chat APIs
-  // ---------------------------------------------------------------------------
-
-  Future<String> _translateOpenAi(String text, TranslationConfig config) async {
-    final urlTemplate = _effectiveUrl(config, config.openaiChatUrl);
-    final bodyTemplate = _effectiveBody(config, kOpenAiBodyTemplate);
-    final targetName =
-        kTranslationLanguages[config.targetLanguage] ?? config.targetLanguage;
-    final url = renderUrlTemplate(urlTemplate, {
-      ..._baseVars(config),
-      'toLang': targetName,
-      'text': text,
-    });
-    final headers = _requestHeaders(
-      config,
-      const {'Authorization': 'Bearer @apiKey', 'Accept': 'application/json'},
-      vars: {..._baseVars(config), 'toLang': targetName},
-      requireApiKey: config.customHeaders?.trim().isNotEmpty != true,
-    );
-    final body = renderJsonTemplate(bodyTemplate, {
-      ..._baseVars(config),
-      'toLang': targetName,
-      'text': text,
-      'systemPrompt': config.systemPrompt,
-      'userPrompt': _renderUserPrompt(text, config),
-    });
-    try {
-      await _awaitRateLimit();
-      final response = await _dio.post(
-        url,
-        data: body,
-        options: Options(headers: headers),
-      );
-      _validateStatus(response);
-      return _parseOpenAiResponse(response.data);
-    } on TranslationException {
-      rethrow;
-    } on DioException catch (error) {
-      throw _dioError(error);
-    } on Object catch (error) {
-      throw TranslationException('$error');
-    }
-  }
-
-  String _parseOpenAiResponse(Object? data) {
-    if (data is! Map) {
-      throw const TranslationException('unexpected response format');
-    }
-    final choices = data['choices'];
-    if (choices is! List || choices.isEmpty || choices[0] is! Map) {
-      throw const TranslationException('unexpected response format');
-    }
-    final message = (choices[0] as Map)['message'];
-    var content = message is Map ? message['content'] : null;
-    if (content is! String) {
-      throw const TranslationException('empty translation');
-    }
-    // Reasoning models may prepend a think block; strip it and any wrapping
-    // code fences the model might have added.
-    content = content.replaceAll(
-      RegExp(r'<think>[\s\S]*?</think>', multiLine: true),
-      '',
-    );
-    content = content.trim();
-    final fence = RegExp(r'^```[a-zA-Z]*\n([\s\S]*)\n```$');
-    final match = fence.firstMatch(content);
-    if (match != null) content = match.group(1)!.trim();
-    if (content.isEmpty) {
-      throw const TranslationException('empty translation');
-    }
-    return content;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Template rendering
-  // ---------------------------------------------------------------------------
-
-  String _effectiveUrl(TranslationConfig config, String defaultUrl) =>
-      (config.customUrl?.trim().isNotEmpty ?? false)
-      ? config.customUrl!.trim()
-      : defaultUrl;
-
-  String _effectiveBody(TranslationConfig config, String defaultBody) =>
-      (config.customBody?.trim().isNotEmpty ?? false)
-      ? config.customBody!.trim()
-      : defaultBody;
-
-  /// Effective request headers: the custom set when configured, otherwise the
-  /// defaults; values are template-rendered. A JSON content type is ensured
-  /// because request bodies are always rendered JSON templates.
-  Map<String, String> _requestHeaders(
-    TranslationConfig config,
-    Map<String, String> defaults, {
-    required Map<String, String> vars,
-    bool requireApiKey = false,
-  }) {
-    if (requireApiKey && config.apiKey.trim().isEmpty) {
-      throw const TranslationException('no API key configured');
-    }
-    final custom = config.customHeaders?.trim() ?? '';
-    Map<String, String> base = defaults;
-    if (custom.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(custom);
-        if (decoded is Map) {
-          base = {for (final e in decoded.entries) '${e.key}': '${e.value}'};
-        }
-      } on FormatException {
-        // fall through to defaults on malformed JSON
-      }
-    }
-    final rendered = {
-      for (final entry in base.entries)
-        entry.key: renderPlainTemplate(entry.value, vars),
-    };
-    rendered.putIfAbsent('Content-Type', () => 'application/json');
-    return rendered;
-  }
-
-  /// Effective custom headers, when configured; otherwise [defaults].
-  Map<String, String> _effectiveHeaders(
-    TranslationConfig config,
-    Map<String, String> defaults,
+  /// Applies the parse rule to the response and returns the translation.
+  String _extractTranslation(
+    Response response,
+    TranslationRequestProfile profile,
   ) {
-    final custom = config.customHeaders?.trim() ?? '';
-    if (custom.isEmpty) return defaults;
-    try {
-      final decoded = jsonDecode(custom);
-      if (decoded is Map) {
-        return {for (final e in decoded.entries) '${e.key}': '${e.value}'};
+    final rule = profile.parsePath.trim();
+    if (rule.isEmpty) {
+      // No parse rule: the raw body is the translation (plain-text APIs).
+      final body = _responseBody(response);
+      final result = _postProcess(body, profile);
+      if (result.trim().isEmpty) {
+        throw const TranslationException('empty translation');
       }
-    } on FormatException {
-      // fall through to defaults on malformed JSON
+      return result;
     }
-    return defaults;
-  }
-
-  Map<String, String> _baseVars(TranslationConfig config) => {
-    'toLang': config.targetLanguage,
-    'fromLang': 'auto',
-    'apiKey': config.apiKey,
-    'model': config.model,
-  };
-
-  String _renderUserPrompt(String text, TranslationConfig config) {
-    final targetName =
-        kTranslationLanguages[config.targetLanguage] ?? config.targetLanguage;
-    return config.userPrompt
-        .replaceAll('@toLang', targetName)
-        .replaceAll('@text', text);
-  }
-
-  /// Renders a plain-text template (header values), substituting verbatim.
-  @visibleForTesting
-  static String renderPlainTemplate(String template, Map<String, String> vars) {
-    var result = template;
-    for (final entry in vars.entries) {
-      result = result.replaceAll('@${entry.key}', entry.value);
+    var data = response.data;
+    if (data is String) {
+      final trimmed = data.trim();
+      if (trimmed.isEmpty) {
+        throw const TranslationException('unexpected response format');
+      }
+      try {
+        data = jsonDecode(trimmed);
+      } on FormatException {
+        throw const TranslationException('unexpected response format');
+      }
+    }
+    final value = resolveJsonPath(data, rule);
+    final result = _postProcess('$value', profile);
+    if (result.trim().isEmpty) {
+      throw const TranslationException('empty translation');
     }
     return result;
   }
 
-  /// Renders a URL template, percent-encoding every substituted value.
-  @visibleForTesting
-  static String renderUrlTemplate(String template, Map<String, String> vars) {
-    var result = template;
-    for (final entry in vars.entries) {
-      result = result.replaceAll(
-        '@${entry.key}',
-        Uri.encodeComponent(entry.value),
-      );
+  /// Strips reasoning blocks and code fences (AI chat APIs).
+  String _postProcess(String content, TranslationRequestProfile profile) {
+    var result = content;
+    if (profile.stripThink) {
+      result = result
+          .replaceAll(RegExp(r'<think>[\s\S]*?</think>', multiLine: true), '')
+          .trim();
+      final fence = RegExp(r'^```[a-zA-Z]*\n([\s\S]*)\n```$');
+      final match = fence.firstMatch(result);
+      if (match != null) result = match.group(1)!.trim();
     }
     return result;
   }
 
-  /// Renders a JSON body template. Quoted tokens (`"@token"`) are replaced
-  /// with the JSON-encoded value so strings keep valid escaping; remaining
-  /// bare tokens are replaced verbatim (for numbers etc.).
-  @visibleForTesting
-  static String renderJsonTemplate(String template, Map<String, String> vars) {
-    var result = template;
-    for (final entry in vars.entries) {
-      result = result.replaceAll('"@${entry.key}"', jsonEncode(entry.value));
+  /// Raw response body as text, for the probe and error details.
+  String _responseBody(Response response) {
+    final data = response.data;
+    if (data is String) return data;
+    if (data == null) return '';
+    try {
+      return jsonEncode(data);
+    } on Object {
+      return '$data';
     }
-    for (final entry in vars.entries) {
-      result = result.replaceAll('@${entry.key}', entry.value);
-    }
-    return result;
   }
 
   /// Splits [text] into chunks whose percent-encoded form stays well below
@@ -575,18 +460,9 @@ class TranslationService {
 
   /// First 200 characters of an error response body, for diagnostics.
   String? _responseDetail(Response response) {
-    final data = response.data;
-    final String body;
-    if (data is String) {
-      body = data;
-    } else if (data != null) {
-      body = jsonEncode(data);
-    } else {
-      return null;
-    }
-    final trimmed = body.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed.length <= 200 ? trimmed : '${trimmed.substring(0, 200)}…';
+    final body = _responseBody(response).trim();
+    if (body.isEmpty) return null;
+    return body.length <= 200 ? body : '${body.substring(0, 200)}…';
   }
 
   TranslationException _dioError(DioException error) {
@@ -615,4 +491,13 @@ class TranslationService {
         return 'network error';
     }
   }
+}
+
+/// Mutable capture buffer filled while a probe request runs.
+class _ProbeLog {
+  int? status;
+  String? rawBody;
+  String? requestUrl;
+  Map<String, String>? requestHeaders;
+  String? requestBody;
 }

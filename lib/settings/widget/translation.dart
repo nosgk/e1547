@@ -1,4 +1,5 @@
 import 'package:e1547/settings/settings.dart';
+import 'package:e1547/settings/widget/translation_advanced.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
@@ -13,40 +14,6 @@ class TranslationSettingsPage extends StatefulWidget {
 }
 
 class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
-  final TextEditingController _testController = TextEditingController(
-    text: 'Hello, world!',
-  );
-
-  @override
-  void dispose() {
-    _testController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _testConnection() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final config = translationConfigFromSettings(context.read<Settings>());
-    try {
-      final result = await TranslationService.instance.testConnection(config);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Translation test succeeded: {result}'.trArgs({
-              'result': result.length > 60
-                  ? '${result.substring(0, 60)}…'
-                  : result,
-            }),
-          ),
-        ),
-      );
-    } on Object catch (error) {
-      final message = error is TranslationException
-          ? localizedTranslationError(error.message)
-          : '$error';
-      messenger.showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -101,46 +68,11 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                 onTap: () => _pickProvider(context, value),
               ),
             ),
-            ValueListenableBuilder<int>(
-              valueListenable: context.read<Settings>().translateRateLimit,
-              builder: (context, value, child) => ListTile(
-                title: Text('Requests per minute'.tr),
-                subtitle: Text(
-                  value <= 0
-                      ? 'No rate limit'.tr
-                      : '{count} requests per minute'.trArgs({'count': value}),
-                ),
-                leading: const Icon(Icons.speed),
-                onTap: () => _pickRateLimit(context, value),
-              ),
-            ),
             const Divider(),
             ValueListenableBuilder<TranslationProvider>(
               valueListenable: context.read<Settings>().translateProvider,
               builder: (context, provider, child) {
                 final settings = context.read<Settings>();
-                final advancedDefaults = switch (provider) {
-                  TranslationProvider.google => (
-                    url: kGoogleUrlTemplate,
-                    headers: kGoogleDefaultHeaders,
-                    body: kGoogleDefaultBody,
-                  ),
-                  TranslationProvider.microsoft => (
-                    url: kMicrosoftUrlTemplate,
-                    headers: kMicrosoftDefaultHeaders,
-                    body: kMicrosoftDefaultBody,
-                  ),
-                  TranslationProvider.azure => (
-                    url: kAzureDefaultEndpoint,
-                    headers: '{"Accept": "application/json"}',
-                    body: '[{"Text": "@text"}]',
-                  ),
-                  TranslationProvider.openai => (
-                    url: translationConfigFromSettings(settings).openaiChatUrl,
-                    headers: kOpenAiDefaultHeaders,
-                    body: kOpenAiBodyTemplate,
-                  ),
-                };
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -197,117 +129,31 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                         label: 'API key'.tr,
                         hintText: '0123456789abcdef…',
                       ),
-                      _SettingTextField(
-                        setting: settings.translateAzureEndpoint,
-                        label: 'Custom URL'.tr,
-                        defaultValue: kAzureDefaultEndpoint,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        child: Text(
-                          'Region hint: add Ocp-Apim-Subscription-Region in custom headers'
-                              .tr,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: dimTextColor(context)),
-                        ),
-                      ),
                       const Divider(),
                     ],
                     SectionHeader(
                       indent: SectionHeader.listTileIndent,
                       title: 'Advanced customization'.tr,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
+                    ListTile(
+                      title: Text('API Request Configuration'.tr),
+                      subtitle: Text(
+                        'Method, URL, query, headers, body, parsing & '
+                                'performance'
+                            .tr,
                       ),
-                      child: Text(
-                        'Applies to the current service'.tr,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: dimTextColor(context),
+                      leading: const Icon(Icons.http_outlined),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AdvancedRequestSettingsPage(provider: provider),
                         ),
                       ),
                     ),
-                    _SettingTextField(
-                      setting: switch (provider) {
-                        TranslationProvider.google =>
-                          settings.translateGoogleUrl,
-                        TranslationProvider.microsoft =>
-                          settings.translateMicrosoftUrl,
-                        TranslationProvider.azure =>
-                          settings.translateAzureEndpoint,
-                        TranslationProvider.openai =>
-                          settings.translateOpenaiUrl,
-                      },
-                      label: 'Custom URL'.tr,
-                      defaultValue: advancedDefaults.url,
-                      maxLines: 3,
-                    ),
-                    _SettingTextField(
-                      setting: switch (provider) {
-                        TranslationProvider.google =>
-                          settings.translateGoogleHeaders,
-                        TranslationProvider.microsoft =>
-                          settings.translateMicrosoftHeaders,
-                        TranslationProvider.azure =>
-                          settings.translateAzureHeaders,
-                        TranslationProvider.openai =>
-                          settings.translateOpenaiHeaders,
-                      },
-                      label: 'Custom headers'.tr,
-                      defaultValue: advancedDefaults.headers,
-                      minLines: 2,
-                      maxLines: 4,
-                    ),
-                    _SettingTextField(
-                      setting: switch (provider) {
-                        TranslationProvider.google =>
-                          settings.translateGoogleBody,
-                        TranslationProvider.microsoft =>
-                          settings.translateMicrosoftBody,
-                        TranslationProvider.azure =>
-                          settings.translateAzureEndpoint,
-                        TranslationProvider.openai =>
-                          settings.translateOpenaiBody,
-                      },
-                      label: 'Custom body'.tr,
-                      defaultValue: advancedDefaults.body,
-                      minLines: 2,
-                      maxLines: 6,
-                    ),
-                    const Divider(),
                   ],
                 );
               },
-            ),
-            SectionHeader(
-              indent: SectionHeader.listTileIndent,
-              title: 'Test connection'.tr,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _testController,
-                decoration: InputDecoration(
-                  labelText: 'Text to translate'.tr,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _testConnection,
-                  icon: const Icon(Icons.wifi_tethering, size: 18),
-                  label: Text('Test connection'.tr),
-                ),
-              ),
             ),
           ],
         ),
@@ -460,33 +306,6 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
               trailing: provider == current ? const Icon(Icons.check) : null,
               onTap: () {
                 settings.translateProvider.value = provider;
-                Navigator.of(context).maybePop();
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  static const List<int> _rateLimitChoices = [0, 15, 30, 60, 120, 240];
-
-  Future<void> _pickRateLimit(BuildContext context, int current) async {
-    final settings = context.read<Settings>();
-    await showDialog(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text('Requests per minute'.tr),
-        children: [
-          for (final choice in _rateLimitChoices)
-            ListTile(
-              title: Text(
-                choice <= 0
-                    ? 'No rate limit'.tr
-                    : '{count} requests per minute'.trArgs({'count': choice}),
-              ),
-              trailing: choice == current ? const Icon(Icons.check) : null,
-              onTap: () {
-                settings.translateRateLimit.value = choice;
                 Navigator.of(context).maybePop();
               },
             ),

@@ -1,13 +1,17 @@
+import 'package:e1547/translate/data/profile.dart';
+
 /// Online translation providers supported by the app.
 enum TranslationProvider {
   google,
+  googleChrome,
   microsoft,
   azure,
   openai;
 
   /// Display name used in UI and "translated by" captions.
   String get label => switch (this) {
-    TranslationProvider.google => 'Google Translate',
+    TranslationProvider.google => 'Google Translate (YT Comments)',
+    TranslationProvider.googleChrome => 'Google Translate (Chrome API)',
     TranslationProvider.microsoft => 'Microsoft Translator',
     TranslationProvider.azure => 'Azure Translator',
     TranslationProvider.openai => 'AI Translation',
@@ -50,36 +54,22 @@ const String kDefaultOpenAiBaseUrl = 'https://api.openai.com/v1';
 
 const String kDefaultOpenAiModel = 'gpt-4o-mini';
 
-/// Default request templates, shown pre-filled in the advanced settings and
-/// used whenever the matching override is empty.
-const String kGoogleUrlTemplate =
-    'https://translate.googleapis.com/translate_a/single'
-    '?client=gtx&sl=auto&tl=@toLang&dt=t&q=@text';
-const String kGoogleDefaultHeaders = '{}';
-const String kGoogleDefaultBody = '';
-
-const String kMicrosoftUrlTemplate =
-    'https://edge.microsoft.com/translate/translatetext?from=&to=@toLang';
-const String kMicrosoftDefaultHeaders = '{"Accept": "application/json"}';
-const String kMicrosoftDefaultBody = '["@text"]';
-
+/// Body template of OpenAI-compatible chat requests, referenced by the
+/// OpenAI request preset.
 const String kOpenAiBodyTemplate =
     '{"model":"@model","temperature":0.3,"messages":'
     '[{"role":"system","content":"@systemPrompt"},'
     '{"role":"user","content":"@userPrompt"}]}';
-const String kOpenAiDefaultHeaders =
-    '{"Authorization": "Bearer @apiKey", "Accept": "application/json"}';
 
-/// Default request quota for the translation service, in requests per
-/// minute. 0 disables limiting.
-const int kDefaultTranslationRateLimit = 60;
-
-const String kAzureDefaultEndpoint =
-    'https://api.cognitive.microsofttranslator.com/translate';
+// Default values of the performance & rate limiting controls (edited in the
+// request configurator).
+const int kDefaultTranslateConcurrency = 1;
+const int kDefaultTranslateIntervalMs = 0;
+const int kDefaultTranslateTimeoutSeconds = 30;
 
 /// Immutable snapshot of everything the translation service needs to run.
 class TranslationConfig {
-  const TranslationConfig({
+  TranslationConfig({
     required this.provider,
     required this.targetLanguage,
     this.apiKey = '',
@@ -88,11 +78,8 @@ class TranslationConfig {
     this.systemPrompt = kDefaultTranslationSystemPrompt,
     this.userPrompt = kDefaultTranslationUserPrompt,
     this.azureApiKey = '',
-    this.azureEndpoint = kAzureDefaultEndpoint,
-    this.customUrl,
-    this.customHeaders,
-    this.customBody,
-  });
+    TranslationRequestProfile? profile,
+  }) : profile = profile ?? defaultRequestProfile(provider);
 
   final TranslationProvider provider;
 
@@ -108,12 +95,11 @@ class TranslationConfig {
 
   // Azure Cognitive settings.
   final String azureApiKey;
-  final String azureEndpoint;
 
-  // Advanced per-provider overrides; null or empty means "use the default".
-  final String? customUrl;
-  final String? customHeaders;
-  final String? customBody;
+  /// The complete HTTP request description, including the response parsing
+  /// rule. Built-in providers ship a preset; users can override every part
+  /// of it in the request configurator.
+  final TranslationRequestProfile profile;
 
   String get openaiChatUrl => baseUrl.endsWith('/')
       ? '${baseUrl}chat/completions'
@@ -121,23 +107,6 @@ class TranslationConfig {
 
   String get openaiModelsUrl =>
       baseUrl.endsWith('/') ? '${baseUrl}models' : '$baseUrl/models';
-
-  /// Normalizes the Azure endpoint per the API conventions: a bare resource
-  /// host gets the translator path appended, a bare /translate suffix is
-  /// used as-is.
-  String get azureTranslateUrl {
-    final endpoint = azureEndpoint.trim().isEmpty
-        ? kAzureDefaultEndpoint
-        : azureEndpoint.trim();
-    if (endpoint.toLowerCase().endsWith('/translate')) return endpoint;
-    final uri = Uri.tryParse(endpoint);
-    if (uri != null &&
-        uri.host.toLowerCase().endsWith('cognitiveservices.azure.com')) {
-      return '${endpoint.replaceAll(RegExp(r'/+$'), '')}'
-          '/translator/text/v3.0/translate';
-    }
-    return '${endpoint.replaceAll(RegExp(r'/+$'), '')}/translate';
-  }
 }
 
 /// Roughly detects text that is already Chinese, so auto translation can

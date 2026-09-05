@@ -189,23 +189,19 @@ class Settings extends NotifiedSettings {
     key: 'translateAzureKey',
     initialValue: '',
   );
-  late final ValueNotifier<String> translateAzureEndpoint = createSetting(
-    key: 'translateAzureEndpoint',
-    initialValue: '',
-  );
-  late final ValueNotifier<String> translateAzureHeaders = createSetting(
-    key: 'translateAzureHeaders',
-    initialValue: '',
-  );
-  late final ValueNotifier<String> translateAzureBody = createSetting(
-    key: 'translateAzureBody',
-    initialValue: '',
-  );
 
-  /// Client-side request quota in requests per minute; 0 disables limiting.
-  late final ValueNotifier<int> translateRateLimit = createSetting(
-    key: 'translateRateLimit',
-    initialValue: kDefaultTranslationRateLimit,
+  // Performance & rate limiting (edited in the request configurator).
+  late final ValueNotifier<int> translateConcurrency = createSetting(
+    key: 'translateConcurrency',
+    initialValue: kDefaultTranslateConcurrency,
+  );
+  late final ValueNotifier<int> translateIntervalMs = createSetting(
+    key: 'translateIntervalMs',
+    initialValue: kDefaultTranslateIntervalMs,
+  );
+  late final ValueNotifier<int> translateTimeoutSeconds = createSetting(
+    key: 'translateTimeoutSeconds',
+    initialValue: kDefaultTranslateTimeoutSeconds,
   );
 
   // OpenAI-compatible provider settings.
@@ -230,41 +226,26 @@ class Settings extends NotifiedSettings {
     initialValue: kDefaultTranslationUserPrompt,
   );
 
-  // Advanced per-provider overrides; empty strings mean "use the default".
-  late final ValueNotifier<String> translateGoogleUrl = createSetting(
-    key: 'translateGoogleUrl',
+  // Per-provider HTTP request profiles ("advanced customization"); empty
+  // means "use the preset". Edited in the request configurator.
+  late final ValueNotifier<String> translateProfileGoogle = createSetting(
+    key: 'translateProfileGoogle',
     initialValue: '',
   );
-  late final ValueNotifier<String> translateGoogleHeaders = createSetting(
-    key: 'translateGoogleHeaders',
+  late final ValueNotifier<String> translateProfileGoogleChrome = createSetting(
+    key: 'translateProfileGoogleChrome',
     initialValue: '',
   );
-  late final ValueNotifier<String> translateGoogleBody = createSetting(
-    key: 'translateGoogleBody',
+  late final ValueNotifier<String> translateProfileMicrosoft = createSetting(
+    key: 'translateProfileMicrosoft',
     initialValue: '',
   );
-  late final ValueNotifier<String> translateMicrosoftUrl = createSetting(
-    key: 'translateMicrosoftUrl',
+  late final ValueNotifier<String> translateProfileAzure = createSetting(
+    key: 'translateProfileAzure',
     initialValue: '',
   );
-  late final ValueNotifier<String> translateMicrosoftHeaders = createSetting(
-    key: 'translateMicrosoftHeaders',
-    initialValue: '',
-  );
-  late final ValueNotifier<String> translateMicrosoftBody = createSetting(
-    key: 'translateMicrosoftBody',
-    initialValue: '',
-  );
-  late final ValueNotifier<String> translateOpenaiUrl = createSetting(
-    key: 'translateOpenaiUrl',
-    initialValue: '',
-  );
-  late final ValueNotifier<String> translateOpenaiHeaders = createSetting(
-    key: 'translateOpenaiHeaders',
-    initialValue: '',
-  );
-  late final ValueNotifier<String> translateOpenaiBody = createSetting(
-    key: 'translateOpenaiBody',
+  late final ValueNotifier<String> translateProfileOpenai = createSetting(
+    key: 'translateProfileOpenai',
     initialValue: '',
   );
 }

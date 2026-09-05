@@ -9,10 +9,12 @@ import 'package:flutter/material.dart';
 
 /// Builds a [TranslationConfig] from the current settings values, falling
 /// back to defaults for empty optional fields. Also applies the configured
-/// request-per-minute quota to the service.
+/// performance & rate limiting controls to the service.
 TranslationConfig translationConfigFromSettings(Settings settings) {
-  TranslationService.instance.requestsPerMinute =
-      settings.translateRateLimit.value;
+  final service = TranslationService.instance;
+  service.maxConcurrency = settings.translateConcurrency.value;
+  service.requestIntervalMs = settings.translateIntervalMs.value;
+  service.requestTimeoutSeconds = settings.translateTimeoutSeconds.value;
   final provider = settings.translateProvider.value;
   return TranslationConfig(
     provider: provider,
@@ -23,26 +25,26 @@ TranslationConfig translationConfigFromSettings(Settings settings) {
     systemPrompt: settings.translateSystemPrompt.value,
     userPrompt: settings.translateUserPrompt.value,
     azureApiKey: settings.translateAzureKey.value,
-    azureEndpoint: settings.translateAzureEndpoint.value,
-    customUrl: switch (provider) {
-      TranslationProvider.google => settings.translateGoogleUrl.value,
-      TranslationProvider.microsoft => settings.translateMicrosoftUrl.value,
-      TranslationProvider.azure => null,
-      TranslationProvider.openai => settings.translateOpenaiUrl.value,
-    },
-    customHeaders: switch (provider) {
-      TranslationProvider.google => settings.translateGoogleHeaders.value,
-      TranslationProvider.microsoft => settings.translateMicrosoftHeaders.value,
-      TranslationProvider.azure => settings.translateAzureHeaders.value,
-      TranslationProvider.openai => settings.translateOpenaiHeaders.value,
-    },
-    customBody: switch (provider) {
-      TranslationProvider.google => settings.translateGoogleBody.value,
-      TranslationProvider.microsoft => settings.translateMicrosoftBody.value,
-      TranslationProvider.azure => settings.translateAzureBody.value,
-      TranslationProvider.openai => settings.translateOpenaiBody.value,
-    },
+    profile: profileFromSettings(settings, provider),
   );
+}
+
+/// Reads the stored HTTP request profile of [provider], falling back to the
+/// provider preset when nothing (valid) is stored.
+TranslationRequestProfile profileFromSettings(
+  Settings settings,
+  TranslationProvider provider,
+) {
+  final stored = switch (provider) {
+    TranslationProvider.google => settings.translateProfileGoogle.value,
+    TranslationProvider.googleChrome =>
+      settings.translateProfileGoogleChrome.value,
+    TranslationProvider.microsoft => settings.translateProfileMicrosoft.value,
+    TranslationProvider.azure => settings.translateProfileAzure.value,
+    TranslationProvider.openai => settings.translateProfileOpenai.value,
+  };
+  return TranslationRequestProfile.tryDecode(stored) ??
+      defaultRequestProfile(provider);
 }
 
 /// Parses a stored custom language list ("[{"code":"xx","name":"YY"},...]").
