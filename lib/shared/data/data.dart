@@ -7,6 +7,7 @@ export 'download.dart';
 export 'export.dart';
 export 'future.dart';
 export 'hosts.dart';
+export 'i18n.dart';
 export 'listenable.dart';
 export 'map.dart';
 export 'provider.dart';

@@ -1,3 +1,4 @@
+import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -71,7 +72,7 @@ class _HostFormFieldState extends State<HostFormField> {
       focusNode: focusNode,
       readOnly: widget.readOnly,
       decoration: InputDecoration(
-        labelText: 'Site',
+        labelText: 'Site'.tr,
         border: const OutlineInputBorder(),
         prefixIcon: const Icon(Icons.public),
         prefixText: isHttps ? 'https://' : 'http://',
@@ -81,7 +82,7 @@ class _HostFormFieldState extends State<HostFormField> {
       textInputAction: TextInputAction.next,
       validator: (value) {
         if (value!.trim().isEmpty) {
-          return 'You must provide a host URL.';
+          return 'You must provide a host URL.'.tr;
         }
         try {
           if (isHttps) {
@@ -91,7 +92,7 @@ class _HostFormFieldState extends State<HostFormField> {
           }
           Uri.parse(value);
         } on FormatException {
-          return 'Invalid host URL';
+          return 'Invalid host URL'.tr;
         }
         return null;
       },
@@ -105,7 +106,8 @@ class _HostFormFieldState extends State<HostFormField> {
               verticalOffset: 44,
               message:
                   'Site can\'t be changed. '
-                  'Add a new account to use a different one.',
+                          'Add a new account to use a different one.'
+                      .tr,
               child: field,
             )
           : field,
@@ -125,17 +127,17 @@ class UsernameFormField extends StatelessWidget {
       child: TextFormField(
         controller: controller,
         autocorrect: false,
-        decoration: const InputDecoration(
-          labelText: 'Username',
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(Icons.person_outline),
+        decoration: InputDecoration(
+          labelText: 'Username'.tr,
+          border: const OutlineInputBorder(),
+          prefixIcon: const Icon(Icons.person_outline),
         ),
         inputFormatters: [FilteringTextInputFormatter.deny(' ')],
         autofillHints: const [AutofillHints.username],
         textInputAction: TextInputAction.next,
         validator: (value) {
           if (value!.trim().isEmpty) {
-            return 'You must provide a username.';
+            return 'You must provide a username.'.tr;
           }
           return null;
         },
@@ -170,7 +172,7 @@ class _ApikeyFormFieldState extends State<ApikeyFormField> {
         autocorrect: false,
         controller: widget.controller,
         decoration: InputDecoration(
-          labelText: 'API key',
+          labelText: 'API key'.tr,
           border: const OutlineInputBorder(),
           prefixIcon: const Icon(Icons.key),
           suffixIcon: Padding(
@@ -179,7 +181,7 @@ class _ApikeyFormFieldState extends State<ApikeyFormField> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: obscurePassword ? 'Show' : 'Hide',
+                  tooltip: obscurePassword ? 'Show'.tr : 'Hide'.tr,
                   icon: Icon(
                     obscurePassword ? Icons.visibility_off : Icons.visibility,
                   ),
@@ -199,8 +201,9 @@ class _ApikeyFormFieldState extends State<ApikeyFormField> {
         textInputAction: TextInputAction.done,
         validator: (value) {
           if (value!.isEmpty) {
-            return 'You must provide an API key.\n'
-                'e.g. $apiKeyExample';
+            return 'You must provide an API key.\ne.g. {example}'.trArgs({
+              'example': apiKeyExample,
+            });
           }
 
           if (widget.canOmit &&
@@ -209,8 +212,8 @@ class _ApikeyFormFieldState extends State<ApikeyFormField> {
           }
 
           if (!RegExp(r'^[A-z\d]{24,32}$').hasMatch(value)) {
-            return 'API key is a 24 or 32-character sequence of {A..z} and {0..9}\n'
-                'e.g. $apiKeyExample';
+            return 'API key is a 24 or 32-character sequence of {A..z} and {0..9}\ne.g. {example}'
+                .trArgs({'example': apiKeyExample});
           }
 
           return null;

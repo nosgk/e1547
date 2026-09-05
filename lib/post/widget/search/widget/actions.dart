@@ -175,7 +175,7 @@ class RemoveTagAction extends StatelessWidget {
 
     return ActionButton(
       icon: const Icon(Icons.search_off),
-      label: const Text('Remove'),
+      label: Text('Remove'.tr),
       onTap: () {
         Navigator.of(context).maybePop();
         controller.removeTag(tag);
@@ -215,7 +215,7 @@ class SubtractTagAction extends StatelessWidget {
 
     return ActionButton(
       icon: const Icon(Icons.zoom_out),
-      label: const Text('Subtract'),
+      label: Text('Subtract'.tr),
       onTap: () {
         Navigator.of(context).maybePop();
         controller.subtractTag(tag);

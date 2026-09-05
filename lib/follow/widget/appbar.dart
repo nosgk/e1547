@@ -17,7 +17,9 @@ class FollowSelectionAppBar extends StatelessWidget with AppBarBuilderWidget {
       child: child,
       titleBuilder: (context, data) => data.selections.length == 1
           ? Text(data.selections.first.name)
-          : Text('${data.selections.length} follows'),
+          : Text(
+              '{count} follows'.trArgs({'count': data.selections.length}),
+            ),
       actionBuilder: (context, data) {
         int unseen = data.selections.fold(0, (a, b) => a + (b.unseen ?? 0));
         bool bookmarked = data.selections.every(
@@ -33,8 +35,8 @@ class FollowSelectionAppBar extends StatelessWidget with AppBarBuilderWidget {
                 notified ? Icons.notifications_off : Icons.notifications_active,
               ),
               tooltip: notified
-                  ? 'Disable notifications'
-                  : 'Enable notifications',
+                  ? 'Disable notifications'.tr
+                  : 'Enable notifications'.tr,
               onPressed: () async {
                 data.clear();
                 if (notified) {
@@ -56,7 +58,7 @@ class FollowSelectionAppBar extends StatelessWidget with AppBarBuilderWidget {
             ),
           IconButton(
             icon: Icon(bookmarked ? Icons.person_add : Icons.bookmark),
-            tooltip: bookmarked ? 'Subscribe' : 'Bookmark',
+            tooltip: bookmarked ? 'Subscribe'.tr : 'Bookmark'.tr,
             onPressed: () async {
               data.clear();
               if (bookmarked) {
@@ -79,8 +81,8 @@ class FollowSelectionAppBar extends StatelessWidget with AppBarBuilderWidget {
           IconButton(
             icon: Icon(unseen > 0 ? Icons.mark_email_read : Icons.drafts),
             tooltip: unseen > 0
-                ? 'mark $unseen posts as seen'
-                : 'no unseen posts',
+                ? 'mark {count} posts as seen'.trArgs({'count': unseen})
+                : 'no unseen posts'.tr,
             onPressed: unseen > 0
                 ? () async {
                     data.clear();

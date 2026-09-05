@@ -48,7 +48,9 @@ class _DescriptionEditDisplayState extends State<DescriptionEditDisplay> {
                                 MaterialPageRoute(
                                   builder: (context) => DTextEditor(
                                     title: Text(
-                                      '#${widget.postId} description',
+                                      '#{id} description'.trArgs({
+                                        'id': widget.postId.toString(),
+                                      }),
                                     ),
                                     content: widget.controller.text,
                                     onSubmitted: (text) {
@@ -81,7 +83,7 @@ class _DescriptionEditDisplayState extends State<DescriptionEditDisplay> {
                 child: widget.controller.text.trim().isNotEmpty
                     ? DText(widget.controller.text)
                     : Text(
-                        'No description',
+                        'No description'.tr,
                         style: TextStyle(
                           color: dimTextColor(context),
                           fontStyle: FontStyle.italic,
@@ -91,9 +93,9 @@ class _DescriptionEditDisplayState extends State<DescriptionEditDisplay> {
             ] else if (isWideLayout) ...[
               TextFormField(
                 controller: widget.controller,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter post description...',
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: 'Enter post description...'.tr,
                 ),
                 maxLines: null,
                 enabled: widget.enabled,

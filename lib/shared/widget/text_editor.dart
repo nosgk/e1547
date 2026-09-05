@@ -191,9 +191,9 @@ class _MultiTextEditorState extends State<MultiTextEditor> {
         }
 
         Map<Widget, Widget>? tabs = {
-          const Tab(text: 'Write'): editor(),
+          Tab(text: 'Write'.tr): editor(),
           if (widget.preview case final preview?)
-            const Tab(text: 'Preview'): scrollView(
+            Tab(text: 'Preview'.tr): scrollView(
               preview(context, textControllerMap),
             ),
         };

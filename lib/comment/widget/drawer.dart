@@ -9,14 +9,14 @@ class CommentListDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<CommentParamsController>();
     return ContextDrawer(
-      title: const Text('Comments'),
+      title: Text('Comments'.tr),
       children: [
         SwitchListTile(
           secondary: const Icon(Icons.sort),
-          title: const Text('Comment order'),
+          title: Text('Comment order'.tr),
           subtitle: Text(switch (controller.value.order) {
-            CommentOrder.oldest => 'oldest first',
-            CommentOrder.newest => 'newest first',
+            CommentOrder.oldest => 'oldest first'.tr,
+            CommentOrder.newest => 'newest first'.tr,
           }),
           value: controller.value.order == CommentOrder.oldest,
           onChanged: (value) {

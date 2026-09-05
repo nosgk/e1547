@@ -92,7 +92,8 @@ class _LoginLoadingDialogState extends State<LoginLoadingDialog> {
             return;
           }
         }
-        reason = 'You already have an identity under this host and username.';
+        reason =
+            'You already have an identity under this host and username.'.tr;
       }
       await navigator.maybePop();
       widget.onError?.call(reason);

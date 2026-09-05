@@ -59,54 +59,55 @@ abstract class TopicParams with _$TopicParams {
     );
   }
 
-  static const titleFilter = TextFilterTag(
+  static final titleFilter = TextFilterTag(
     tag: 'search[title_matches]',
-    name: 'Title contains',
+    name: 'Title contains'.tr,
   );
 
   static final categoryFilter = EnumFilterTag<TopicCategory>(
     tag: 'search[category_id]',
-    name: 'Category',
+    name: 'Category'.tr,
     values: TopicCategory.values,
     valueMapper: (value) => value.id.toString(),
     nameMapper: (value) => switch (value) {
-      TopicCategory.general => 'General',
+      TopicCategory.general => 'General'.tr,
       TopicCategory.siteBugReportsAndFeatureRequests =>
-        'Site Bug Reports & Feature Requests',
+        'Site Bug Reports & Feature Requests'.tr,
       TopicCategory.tagWikiProjectsAndQuestions =>
-        'Tag/Wiki Projects and Questions',
+        'Tag/Wiki Projects and Questions'.tr,
       TopicCategory.tagAliasAndImplicationSuggestions =>
-        'Tag Alias and Implication Suggestions',
-      TopicCategory.artTalk => 'Art Talk',
-      TopicCategory.offTopic => 'Off Topic',
-      TopicCategory.e621ToolsAndApplications => 'e621 Tools and Applications',
+        'Tag Alias and Implication Suggestions'.tr,
+      TopicCategory.artTalk => 'Art Talk'.tr,
+      TopicCategory.offTopic => 'Off Topic'.tr,
+      TopicCategory.e621ToolsAndApplications =>
+        'e621 Tools and Applications'.tr,
     },
     undefinedOption: const EnumFilterNullTagValue(),
   );
 
   static final orderFilter = EnumFilterTag<TopicOrder>(
     tag: 'search[order]',
-    name: 'Sort by',
+    name: 'Sort by'.tr,
     values: TopicOrder.values,
     valueMapper: (value) => value.value,
     nameMapper: (value) => switch (value) {
-      TopicOrder.sticky => 'Default',
-      TopicOrder.newest => 'Newest first',
-      TopicOrder.oldest => 'Oldest first',
+      TopicOrder.sticky => 'Default'.tr,
+      TopicOrder.newest => 'Newest first'.tr,
+      TopicOrder.oldest => 'Oldest first'.tr,
     },
   );
 
-  static const stickyFilter = BooleanFilterTag(
+  static final stickyFilter = BooleanFilterTag(
     tag: 'search[is_sticky]',
-    name: 'Sticky',
-    description: 'Is sticky',
+    name: 'Sticky'.tr,
+    description: 'Is sticky'.tr,
     tristate: true,
   );
 
-  static const lockedFilter = BooleanFilterTag(
+  static final lockedFilter = BooleanFilterTag(
     tag: 'search[is_locked]',
-    name: 'Locked',
-    description: 'Is locked',
+    name: 'Locked'.tr,
+    description: 'Is locked'.tr,
     tristate: true,
   );
 

@@ -57,8 +57,8 @@ class SliverTasksList extends StatelessWidget {
       ),
       builderDelegate: defaultPagedChildBuilderDelegate<Task>(
         onRetry: () {},
-        onEmpty: const Text('No tasks'),
-        onError: const Text('Failed to load tasks'),
+        onEmpty: Text('No tasks'.tr),
+        onError: Text('Failed to load tasks'.tr),
         itemBuilder: (context, task, index) => TaskTile(
           task: task,
           controller: context.read<TasksController>(),

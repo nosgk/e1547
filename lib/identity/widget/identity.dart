@@ -32,7 +32,7 @@ class IdentityPage extends StatelessWidget {
                     vertical: 8,
                   ),
                   child: Text(
-                    identity == null ? 'Add account' : 'Edit account',
+                    identity == null ? 'Add account'.tr : 'Edit account'.tr,
                     style: Theme.of(context).textTheme.titleLarge,
                     textAlign: TextAlign.center,
                   ),

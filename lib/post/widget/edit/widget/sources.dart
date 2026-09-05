@@ -32,7 +32,11 @@ class SourcesEditDisplay extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => TextEditor(
-                            title: Text('#$postId sources'),
+                            title: Text(
+                              '#{id} sources'.trArgs({
+                                'id': postId.toString(),
+                              }),
+                            ),
                             content: controller.text,
                             onSubmitted: (text) {
                               controller.text = text;

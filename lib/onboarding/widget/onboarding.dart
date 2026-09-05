@@ -65,7 +65,7 @@ class _OnboardingPagerState extends State<_OnboardingPager> {
                         padding: const EdgeInsets.all(8),
                         child: TextButton(
                           onPressed: complete,
-                          child: const Text('Skip'),
+                          child: Text('Skip'.tr),
                         ),
                       ),
                     ),
@@ -99,13 +99,13 @@ class _OnboardingPagerState extends State<_OnboardingPager> {
                         if (page > 0)
                           TextButton(
                             onPressed: back,
-                            child: const Text('Back'),
+                            child: Text('Back'.tr),
                           ),
                         const Spacer(),
                         if (!isLast)
                           ElevatedButton(
                             onPressed: next,
-                            child: const Text('Next'),
+                            child: Text('Next'.tr),
                           ),
                       ],
                     ),

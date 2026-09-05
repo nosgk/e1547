@@ -22,12 +22,12 @@ class PoolLoadingPage extends StatelessWidget {
         loadingBuilder: (context, child) => Scaffold(
           appBar: AppBar(
             leading: const CloseButton(),
-            title: Text('Pool #$id'),
+            title: Text('Pool #{id}'.trArgs({'id': id})),
           ),
           body: child(context),
         ),
-        onError: const Text('Failed to load pool'),
-        onEmpty: const Text('Pool not found'),
+        onError: Text('Failed to load pool'.tr),
+        onEmpty: Text('Pool not found'.tr),
         child: (context) =>
             PoolPage(pool: state.data!, orderByOldest: orderByOldest),
       ),

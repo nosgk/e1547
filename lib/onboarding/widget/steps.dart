@@ -16,7 +16,7 @@ class WelcomeStep extends StatelessWidget {
           const AppIcon(radius: 64),
           const SizedBox(height: 32),
           Text(
-            'Welcome to ${AppInfo.instance.appName}',
+            'Welcome to {app}'.trArgs({'app': AppInfo.instance.appName}),
             style: Theme.of(context).textTheme.headlineSmall,
             textAlign: TextAlign.center,
           ),
@@ -24,7 +24,7 @@ class WelcomeStep extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'A sophisticated booru browser.',
+              'A sophisticated booru browser.'.tr,
               style: Theme.of(context).textTheme.bodyLarge,
               textAlign: TextAlign.center,
             ),
@@ -48,13 +48,13 @@ class ThemeStep extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Pick a look',
+            'Pick a look'.tr,
             style: Theme.of(context).textTheme.headlineSmall,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
-            'Try one on. You can always change your mind later.',
+            'Try one on. You can always change your mind later.'.tr,
             style: Theme.of(context).textTheme.bodyLarge,
             textAlign: TextAlign.center,
           ),
@@ -122,7 +122,7 @@ class _ThemeSwatch extends StatelessWidget {
                   : null,
             ),
             const SizedBox(height: 8),
-            Text(theme.name),
+            Text(theme.title),
           ],
         ),
       ),
@@ -149,7 +149,7 @@ class LoginStep extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Connect an account',
+              'Connect an account'.tr,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),

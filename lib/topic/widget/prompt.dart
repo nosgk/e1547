@@ -64,11 +64,11 @@ class TopicInfo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          textInfoRow('replies', topic.responseCount.toString()),
+          textInfoRow('replies'.tr, topic.responseCount.toString()),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('id'),
+              Text('id'.tr),
               InkWell(
                 child: Text('#${topic.id}'),
                 onLongPress: () async {
@@ -80,20 +80,24 @@ class TopicInfo extends StatelessWidget {
                   messenger.showSnackBar(
                     SnackBar(
                       duration: const Duration(seconds: 1),
-                      content: Text('Copied topic id #${topic.id}'),
+                      content: Text(
+                        'Copied topic id #{id}'.trArgs({
+                          'id': topic.id.toString(),
+                        }),
+                      ),
                     ),
                   );
                 },
               ),
             ],
           ),
-          textInfoRow('locked', topic.locked ? 'yes' : 'no'),
+          textInfoRow('locked'.tr, topic.locked ? 'yes'.tr : 'no'.tr),
           textInfoRow(
-            'created',
+            'created'.tr,
             DateFormatting.dateTime(topic.createdAt.toLocal()),
           ),
           textInfoRow(
-            'updated',
+            'updated'.tr,
             DateFormatting.dateTime(topic.updatedAt.toLocal()),
           ),
         ],

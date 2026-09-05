@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:e1547/shared/shared.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,7 +31,7 @@ abstract final class Share {
     } else {
       final messenger = ScaffoldMessenger.of(context);
       String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save file',
+        dialogTitle: 'Save file'.tr,
         fileName: name,
       );
       if (outputFile == null) return;
@@ -39,7 +40,7 @@ abstract final class Share {
       messenger.showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 1),
-          content: Text('File saved as ${basename(outputFile)}'),
+          content: Text('File saved as {name}'.trArgs({'name': basename(outputFile)})),
         ),
       );
     }

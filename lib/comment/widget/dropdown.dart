@@ -37,7 +37,7 @@ class CommentListDropdown extends StatelessWidget {
         ),
         if (postId != null)
           PopupMenuTile(
-            title: 'Comment',
+            title: 'Comment'.tr,
             icon: Icons.comment,
             value: () => guardWithLogin(
               context: context,
@@ -50,7 +50,7 @@ class CommentListDropdown extends StatelessWidget {
                   query.invalidate();
                 }
               },
-              error: 'You must be logged in to comment!',
+              error: 'You must be logged in to comment!'.tr,
             ),
           ),
       ],

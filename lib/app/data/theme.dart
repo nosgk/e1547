@@ -1,3 +1,4 @@
+import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -21,6 +22,9 @@ enum AppTheme {
   amoled,
   light,
   blue;
+
+  /// Display name of the theme, translated when a translation is available.
+  String get title => name.tr;
 
   ThemeData get data {
     switch (this) {

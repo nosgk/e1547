@@ -54,7 +54,7 @@ class DenyListPage extends StatelessWidget {
                 floatingActionButton: PromptFab(
                   builder: (context) => buildEditTextField(
                     context,
-                    title: 'Add tag',
+                    title: 'Add tag'.tr,
                     submit: (value) async {
                       value = value.trim();
                       if (value.isEmpty) return;
@@ -78,10 +78,10 @@ class DenyListPage extends StatelessWidget {
                     await client.accounts.pull();
                   },
                   child: denylist.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: IconMessage(
-                            icon: Icon(Icons.check),
-                            title: Text('Your blacklist is empty'),
+                            icon: const Icon(Icons.check),
+                            title: Text('Your blacklist is empty'.tr),
                           ),
                         )
                       : ListView.builder(
@@ -99,7 +99,7 @@ class DenyListPage extends StatelessWidget {
                                 buildEditTextField(
                                   context,
                                   value: tag,
-                                  title: 'Edit tag',
+                                  title: 'Edit tag'.tr,
                                   submit: (value) async {
                                     value = value.trim();
                                     try {

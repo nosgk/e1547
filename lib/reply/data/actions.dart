@@ -32,7 +32,7 @@ Future<bool> writeReply({
   await Navigator.of(context).push(
     MaterialPageRoute(
       builder: (context) => DTextEditor(
-        title: Text('#$topicId reply'),
+        title: Text('{id} reply'.trArgs({'id': topicId.toString()})),
         content: text ?? (reply?.body),
         onSubmitted: (text) async {
           final messenger = ScaffoldMessenger.of(context);
@@ -45,13 +45,13 @@ Future<bool> writeReply({
                 await client.replies.useUpdate(id: reply.id).mutate(text);
               }
             } on ClientException {
-              return 'Failed to send reply!';
+              return 'Failed to send reply!'.tr;
             }
             sent = true;
             messenger.showSnackBar(
-              const SnackBar(
-                duration: Duration(seconds: 1),
-                content: Text('Reply sent!'),
+              SnackBar(
+                duration: const Duration(seconds: 1),
+                content: Text('Reply sent!'.tr),
               ),
             );
           }

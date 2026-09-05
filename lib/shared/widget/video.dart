@@ -207,11 +207,11 @@ enum VideoResolution {
   source;
 
   String get title => switch (this) {
-    VideoResolution.standard => 'Standard (480p)',
-    VideoResolution.high => 'High (720p)',
-    VideoResolution.full => 'Full (1080p)',
-    VideoResolution.ultra => 'Ultra (4K)',
-    VideoResolution.source => 'Source',
+    VideoResolution.standard => 'Standard (480p)'.tr,
+    VideoResolution.high => 'High (720p)'.tr,
+    VideoResolution.full => 'Full (1080p)'.tr,
+    VideoResolution.ultra => 'Ultra (4K)'.tr,
+    VideoResolution.source => 'Source'.tr,
   };
 
   int get pixels => switch (this) {

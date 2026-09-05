@@ -32,6 +32,8 @@ class AppInitState extends State<AppInit> {
   Future<_AppInitData> _init() async {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     await DateFormatting.ensureInitialized();
+    final settings = await Settings.getInstance();
+    await I18n.instance.load(overrideZh: settings.language.value);
     await initializeAppInfo();
     final logs = await initializeLogger();
     final storage = await initializeAppStorage();

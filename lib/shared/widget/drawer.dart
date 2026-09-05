@@ -38,7 +38,9 @@ class ContextDrawer extends StatelessWidget {
 }
 
 class ContextDrawerButton extends StatelessWidget {
-  const ContextDrawerButton({super.key, this.icon, this.tooltip = 'Filter'});
+  const ContextDrawerButton({super.key, this.icon, this.tooltip});
+
+  static String get defaultTooltip => 'Filter'.tr;
 
   final IconData? icon;
   final String? tooltip;
@@ -47,7 +49,7 @@ class ContextDrawerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!Scaffold.of(context).hasEndDrawer) return const SizedBox();
     return IconButton(
-      tooltip: tooltip,
+      tooltip: tooltip ?? defaultTooltip,
       icon: Icon(icon ?? Icons.tune),
       onPressed: () => Scaffold.of(context).openEndDrawer(),
     );

@@ -33,8 +33,9 @@ class CommentDisplay extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'COMMENTS'
-                  ' (${post.commentCount})',
+                  '{count} comments'.trArgs({
+                    'count': post.commentCount.toString(),
+                  }),
                 ),
               ),
             ),
@@ -67,26 +68,29 @@ class SliverPostCommentSection extends StatelessWidget {
         ),
         builder: (context, _) => SliverMainAxisGroup(
           slivers: [
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
                             child: Text(
-                              'Comments',
-                              style: TextStyle(fontSize: 16),
+                              'Comments'.tr,
+                              style: const TextStyle(fontSize: 16),
                             ),
                           ),
-                          CommentListDropdown(),
+                          const CommentListDropdown(),
                         ],
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),

@@ -54,7 +54,8 @@ class LikeDisplay extends StatelessWidget {
                                 SnackBar(
                                   duration: const Duration(seconds: 1),
                                   content: Text(
-                                    'Failed to downvote Post #${post.id}',
+                                    'Failed to downvote Post #{id}'
+                                        .trArgs({'id': post.id.toString()}),
                                   ),
                                 ),
                               );
@@ -137,8 +138,11 @@ class FavoriteButton extends StatelessWidget {
                     duration: const Duration(seconds: 1),
                     content: Text(
                       isLiked
-                          ? 'Failed to remove Post #${post.id} from favorites'
-                          : 'Failed to add Post #${post.id} to favorites',
+                          ? 'Failed to remove Post #{id} from favorites'
+                                .trArgs({'id': post.id.toString()})
+                          : 'Failed to add Post #{id} to favorites'.trArgs({
+                                'id': post.id.toString(),
+                              }),
                     ),
                   ),
                 );

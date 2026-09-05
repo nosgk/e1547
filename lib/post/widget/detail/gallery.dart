@@ -88,8 +88,8 @@ class _PostDetailGalleryState extends State<PostDetailGallery>
                   appBar: const TransparentAppBar(child: DefaultAppBar()),
                   body: child,
                 ),
-                onEmpty: const Text('No posts'),
-                onError: const Text('Failed to load posts'),
+                onEmpty: Text('No posts'.tr),
+                onError: Text('Failed to load posts'.tr),
                 itemBuilder: (context, item, index) => SubScrollController(
                   builder: (context, scrollController) =>
                       PrimaryScrollController(

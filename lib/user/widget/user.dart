@@ -371,9 +371,9 @@ class UserInfo extends StatelessWidget {
               Card(
                 child: ExpandablePanel(
                   controller: Expandables.of(context, 'about'),
-                  header: const ListTile(
-                    leading: Icon(Icons.person),
-                    title: Text('About'),
+                  header: ListTile(
+                    leading: const Icon(Icons.person),
+                    title: Text('About'.tr),
                   ),
                   collapsed: const SizedBox.shrink(),
                   expanded: Padding(
@@ -427,7 +427,11 @@ class UserInfo extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               duration: const Duration(seconds: 1),
-                              content: Text('Copied user id #${user.id}'),
+                              content: Text(
+                                'Copied user id #{id}'.trArgs({
+                                  'id': user.id.toString(),
+                                }),
+                              ),
                             ),
                           );
                         },
@@ -445,11 +449,15 @@ class UserInfo extends StatelessWidget {
                           'rank',
                           stats.levelString?.toLowerCase(),
                         ),
-                        info(Icons.upload, 'posts', stats.postUploadCount),
-                        info(Icons.edit, 'edits', stats.postUpdateCount),
-                        info(Icons.favorite, 'favorites', stats.favoriteCount),
-                        info(Icons.comment, 'comments', stats.commentCount),
-                        info(Icons.forum, 'forum', stats.forumPostCount),
+                        info(Icons.upload, 'posts'.tr, stats.postUploadCount),
+                        info(Icons.edit, 'edits'.tr, stats.postUpdateCount),
+                        info(
+                          Icons.favorite,
+                          'favorites'.tr,
+                          stats.favoriteCount,
+                        ),
+                        info(Icons.comment, 'comments'.tr, stats.commentCount),
+                        info(Icons.forum, 'forum'.tr, stats.forumPostCount),
                       ],
                     ],
                   ),

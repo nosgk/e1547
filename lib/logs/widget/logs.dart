@@ -97,7 +97,7 @@ class _LogFileListState extends State<LogFileList> {
             items: files,
             child: Scaffold(
               appBar: LogFileSelectionAppBar(
-                child: const DefaultAppBar(title: Text('Log Files')),
+                child: DefaultAppBar(title: Text('Log Files'.tr)),
                 onDelete: (files) async {
                   await Future.wait(files.map((e) => File(e.path).delete()));
                   if (!context.mounted) return;
@@ -107,18 +107,18 @@ class _LogFileListState extends State<LogFileList> {
               body: Builder(
                 builder: (context) {
                   if (snapshot.hasError) {
-                    return const IconMessage(
-                      icon: Icon(Icons.warning_amber),
-                      title: Text('Failed to load log files!'),
+                    return IconMessage(
+                      icon: const Icon(Icons.warning_amber),
+                      title: Text('Failed to load log files!'.tr),
                     );
                   }
                   if (files == null) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (files.isEmpty) {
-                    return const IconMessage(
-                      icon: Icon(Icons.close),
-                      title: Text('No log files available!'),
+                    return IconMessage(
+                      icon: const Icon(Icons.close),
+                      title: Text('No log files available!'.tr),
                     );
                   }
                   return GridView.custom(
@@ -147,7 +147,7 @@ class _LogFileListState extends State<LogFileList> {
                                 Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Text(
-                                    'Live\n',
+                                    '${'Live'.tr}\n',
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(
@@ -321,7 +321,11 @@ class _LogPageState extends State<LogPage> {
             appBar: LogSelectionAppBar(
               child: DefaultAppBar(
                 title: Text(
-                  'Logs${date != null ? ' - ${DateFormatting.date(date)}' : ''}',
+                  date != null
+                      ? 'Logs - {date}'.trArgs({
+                          'date': DateFormatting.date(date),
+                        })
+                      : 'Logs'.tr,
                 ),
                 actions: [
                   if (widget.onShowAll != null)
@@ -361,8 +365,8 @@ class _LogPageState extends State<LogPage> {
                                   item: item,
                                   child: LogEntryTile(item: item),
                                 ),
-                            onEmpty: const Text('No logs'),
-                            onError: const Text('Failed to read the log'),
+                            onEmpty: Text('No logs'.tr),
+                            onError: Text('Failed to read the log'.tr),
                           ),
                     ),
                   ),

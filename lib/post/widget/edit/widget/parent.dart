@@ -61,14 +61,14 @@ class _ParentEditDisplayState extends State<ParentEditDisplay> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Parent ID (optional)', style: TextStyle(fontSize: 16)),
+          Text('Parent ID (optional)'.tr, style: const TextStyle(fontSize: 16)),
           const SizedBox(height: 8),
           TextFormField(
             controller: widget.controller,
             focusNode: _focusNode,
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
-              hintText: 'Parent post ID',
+              hintText: 'Parent post ID'.tr,
               errorText: _errorText,
             ),
             keyboardType: TextInputType.number,

@@ -9,14 +9,14 @@ class ReplyListDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<ReplyParamsController>();
     return ContextDrawer(
-      title: const Text('Replies'),
+      title: Text('Replies'.tr),
       children: [
         SwitchListTile(
           secondary: const Icon(Icons.sort),
-          title: const Text('Reply order'),
+          title: Text('Reply order'.tr),
           subtitle: Text(switch (controller.value.order) {
-            ReplyOrder.oldest => 'oldest first',
-            ReplyOrder.newest => 'newest first',
+            ReplyOrder.oldest => 'oldest first'.tr,
+            ReplyOrder.newest => 'newest first'.tr,
           }),
           value: controller.value.order == ReplyOrder.oldest,
           onChanged: (value) {

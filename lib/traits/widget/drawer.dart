@@ -103,13 +103,13 @@ class DrawerDenySwitchBody extends StatelessWidget {
     return Column(
       children: [
         SwitchListTile(
-          title: const Text('Blacklist'),
+          title: Text('Blacklist'.tr),
           subtitle: denying && blockedCount > 0
               ? TweenAnimationBuilder<int>(
                   tween: IntTween(begin: 0, end: blockedCount),
                   duration: defaultAnimationDuration,
                   builder: (context, value, child) =>
-                      Text('blocked $value posts'),
+                      Text('{count} posts blocked'.trArgs({'count': value.toString()})),
                 )
               : null,
           secondary: const Icon(Icons.block),

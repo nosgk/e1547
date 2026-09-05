@@ -36,12 +36,16 @@ class UserLoadingPage extends StatelessWidget {
         loadingBuilder: (context, child) => Scaffold(
           appBar: AppBar(
             leading: const CloseButton(),
-            title: Text(id != null ? 'User #$id' : 'User $name'),
+            title: Text(
+              id != null
+                  ? 'User #{id}'.trArgs({'id': id.toString()})
+                  : 'User {name}'.trArgs({'name': name!}),
+            ),
           ),
           body: child(context),
         ),
-        onError: const Text('Failed to load user'),
-        onEmpty: const Text('User not found'),
+        onError: Text('Failed to load user'.tr),
+        onEmpty: Text('User not found'.tr),
         child: (context) =>
             UserPage(user: state.data!, initialPage: initalPage),
       ),

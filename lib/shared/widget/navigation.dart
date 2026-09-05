@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class RouterDrawerDestination {
   const RouterDrawerDestination({
@@ -119,7 +119,7 @@ class RouterDrawer extends StatelessWidget {
           selected:
               destination.unique &&
               destination.path == controller.drawerSelection,
-          title: Text(destination.name),
+          title: Text(destination.name.tr),
           leading: destination.icon,
           onTap: destination.unique
               ? () => Navigator.of(

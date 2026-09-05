@@ -157,8 +157,8 @@ class PostTimelineSliver extends StatelessWidget {
       fetchNextPage: fetchNextPage,
       builderDelegate: defaultPagedChildBuilderDelegate<Post>(
         onRetry: fetchNextPage,
-        onEmpty: const Text('No posts'),
-        onError: const Text('Failed to load posts'),
+        onEmpty: Text('No posts'.tr),
+        onError: Text('Failed to load posts'.tr),
         itemBuilder: (context, item, index) => Padding(
           padding:
               LimitedWidthLayout.maybeOf(context)?.padding ?? EdgeInsets.zero,

@@ -39,12 +39,12 @@ class DenylistTile extends StatelessWidget {
                     itemBuilder: (context) => [
                       PopupMenuTile(
                         value: onEdit,
-                        title: 'Edit',
+                        title: 'Edit'.tr,
                         icon: Icons.edit,
                       ),
                       PopupMenuTile(
                         value: onDelete,
-                        title: 'Delete',
+                        title: 'Delete'.tr,
                         icon: Icons.delete,
                       ),
                     ],

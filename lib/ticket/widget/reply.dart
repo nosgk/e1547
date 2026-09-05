@@ -12,7 +12,9 @@ class ReplyReportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReasonReportScreen(
-      title: Text('Reply #${reply.id}'),
+      title: Text(
+        'Reply #{id}'.trArgs({'id': reply.id.toString()}),
+      ),
       onReport: (reason) => validateCall(
         () => context.read<Client>().tickets.create(
           type: TicketType.forum,
@@ -20,8 +22,10 @@ class ReplyReportScreen extends StatelessWidget {
           reason: reason,
         ),
       ),
-      onSuccess: 'Reported reply #${reply.id}',
-      onFailure: 'Failed to report reply #${reply.id}',
+      onSuccess: 'Reported reply #{id}'.trArgs({'id': reply.id.toString()}),
+      onFailure: 'Failed to report reply #{id}'.trArgs({
+        'id': reply.id.toString(),
+      }),
       previewBuilder: (context, isLoading) => Card(
         clipBehavior: Clip.antiAlias,
         child: ReportLoadingOverlay(

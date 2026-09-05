@@ -18,12 +18,16 @@ Future<void> loadingNotification<T>({
     return switch (status) {
       LoadingNotificationStatus.loading =>
         onProgress?.call(items, progress) ??
-            'Item ${progress + 1}/${items.length}',
+            'Item {current}/{total}'.trArgs({
+              'current': progress + 1,
+              'total': items.length,
+            }),
       LoadingNotificationStatus.cancelled =>
-        onCancel?.call(items, progress) ?? 'Cancelled task',
+        onCancel?.call(items, progress) ?? 'Cancelled task'.tr,
       LoadingNotificationStatus.failed =>
-        onFailure?.call(items, progress) ?? 'Failed at Item $progress',
-      LoadingNotificationStatus.done => onDone?.call(items) ?? 'Done',
+        onFailure?.call(items, progress) ??
+            'Failed at Item {index}'.trArgs({'index': progress}),
+      LoadingNotificationStatus.done => onDone?.call(items) ?? 'Done'.tr,
     };
   }
 
@@ -61,7 +65,7 @@ Future<void> loadingNotification<T>({
         ),
       ),
       action: SnackBarAction(
-        label: 'CANCEL',
+        label: 'CANCEL'.tr,
         onPressed: () => status = LoadingNotificationStatus.cancelled,
       ),
       duration: const Duration(days: 1),

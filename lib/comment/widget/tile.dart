@@ -213,38 +213,42 @@ class CommentMenu extends StatelessWidget {
       itemBuilder: (context) => [
         if (client.identity.username == comment.creatorName)
           PopupMenuTile(
-            title: 'Edit',
+            title: 'Edit'.tr,
             icon: Icons.edit,
             value: () => guardWithLogin(
               context: context,
               callback: () => editComment(context: context, comment: comment),
-              error: 'You must be logged in to edit comments!',
+              error: 'You must be logged in to edit comments!'.tr,
             ),
           ),
         PopupMenuTile(
-          title: 'Reply',
+          title: 'Reply'.tr,
           icon: Icons.reply,
           value: () => guardWithLogin(
             context: context,
             callback: () => replyComment(context: context, comment: comment),
-            error: 'You must be logged in to reply to comments!',
+            error: 'You must be logged in to reply to comments!'.tr,
           ),
         ),
         PopupMenuTile(
-          title: 'Copy ID',
+          title: 'Copy ID'.tr,
           icon: Icons.tag,
           value: () async {
             Clipboard.setData(ClipboardData(text: comment.id.toString()));
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 duration: const Duration(seconds: 1),
-                content: Text('Copied comment id #${comment.id}'),
+                content: Text(
+                  'Copied comment id #{id}'.trArgs({
+                    'id': comment.id.toString(),
+                  }),
+                ),
               ),
             );
           },
         ),
         PopupMenuTile(
-          title: 'Report',
+          title: 'Report'.tr,
           icon: Icons.report,
           value: () => guardWithLogin(
             context: context,
@@ -253,7 +257,7 @@ class CommentMenu extends StatelessWidget {
                 builder: (context) => CommentReportScreen(comment: comment),
               ),
             ),
-            error: 'You must be logged in to report comments!',
+            error: 'You must be logged in to report comments!'.tr,
           ),
         ),
       ],

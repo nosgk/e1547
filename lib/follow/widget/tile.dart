@@ -28,7 +28,7 @@ class FollowTile extends StatelessWidget {
             minWidth: Theme.of(context).isDesktop ? 600 : 0,
           ),
           child: ControlledTextField(
-            labelText: 'Follow title',
+            labelText: 'Follow title'.tr,
             actionController: promptController,
             textController: TextEditingController(text: follow.name),
             submit: (value) {
@@ -56,7 +56,7 @@ class FollowTile extends StatelessWidget {
           },
           actionController: promptController,
           tag: follow.tags,
-          title: 'Edit follow',
+          title: 'Edit follow'.tr,
         ),
       );
     }
@@ -72,7 +72,7 @@ class FollowTile extends StatelessWidget {
           if ((follow.unseen ?? 0) > 0)
             PopupMenuTile(
               value: () => client.follows.markSeen(follow.id),
-              title: 'Mark as read',
+              title: 'Mark as read'.tr,
               icon: Icons.mark_email_read,
             ),
           if (PlatformCapabilities.hasNotifications && !bookmarked)
@@ -82,8 +82,8 @@ class FollowTile extends StatelessWidget {
                 type: !notified ? FollowType.notify : FollowType.update,
               ),
               title: notified
-                  ? 'Disable notifications'
-                  : 'Enable notifications',
+                  ? 'Disable notifications'.tr
+                  : 'Enable notifications'.tr,
               icon: notified
                   ? Icons.notifications_off
                   : Icons.notifications_active,
@@ -94,16 +94,20 @@ class FollowTile extends StatelessWidget {
                 id: follow.id,
                 type: !bookmarked ? FollowType.bookmark : FollowType.update,
               ),
-              title: bookmarked ? 'Subscribe' : 'Bookmark',
+              title: bookmarked ? 'Subscribe'.tr : 'Bookmark'.tr,
               icon: bookmarked ? Icons.person_add : Icons.bookmark,
             ),
           if (promptController != null && follow.tags.split(' ').length > 1)
-            PopupMenuTile(value: editTitle, title: 'Rename', icon: Icons.label),
+            PopupMenuTile(
+              value: editTitle,
+              title: 'Rename'.tr,
+              icon: Icons.label,
+            ),
           if (promptController != null)
-            PopupMenuTile(value: edit, title: 'Edit', icon: Icons.edit),
+            PopupMenuTile(value: edit, title: 'Edit'.tr, icon: Icons.edit),
           PopupMenuTile(
             value: () => client.follows.delete(follow.id),
-            title: 'Unfollow',
+            title: 'Unfollow'.tr,
             icon: Icons.person_remove,
           ),
         ],
@@ -112,15 +116,10 @@ class FollowTile extends StatelessWidget {
 
     String getStatusText() {
       int unseen = follow.unseen ?? 0;
-      String text = unseen.toString();
-      if (unseen >= 5) {
-        text += '+';
-      }
-      text += ' new post';
-      if (unseen > 1) {
-        text += 's';
-      }
-      return text;
+      String count = unseen >= 5 ? '$unseen+' : '$unseen';
+      return unseen > 1
+          ? '{count} new posts'.trArgs({'count': count})
+          : '{count} new post'.trArgs({'count': count});
     }
 
     return ClipRRect(
@@ -211,7 +210,7 @@ class FollowTile extends StatelessWidget {
                         showChild: follow.alias != null,
                         child: Dimmed(
                           child: Text(
-                            'alias ${follow.alias}',
+                            'alias {alias}'.trArgs({'alias': follow.alias}),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),

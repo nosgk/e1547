@@ -1,3 +1,4 @@
+import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
 
 /// Heading above a group of rows.
@@ -18,7 +19,7 @@ class SectionHeader extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(indent, 8, 16, 8),
       child: Text(
-        title,
+        title.tr,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
           color: Theme.of(context).colorScheme.secondary,
         ),

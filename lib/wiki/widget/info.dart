@@ -26,7 +26,7 @@ class WikiInfo extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('id'),
+              Text('id'.tr),
               InkWell(
                 child: Text('#${wiki.id}'),
                 onLongPress: () async {
@@ -38,7 +38,9 @@ class WikiInfo extends StatelessWidget {
                   messenger.showSnackBar(
                     SnackBar(
                       duration: const Duration(seconds: 1),
-                      content: Text('Copied wiki id #${wiki.id}'),
+                      content: Text(
+                        'Copied wiki id #{id}'.trArgs({'id': wiki.id}),
+                      ),
                     ),
                   );
                 },
@@ -46,19 +48,19 @@ class WikiInfo extends StatelessWidget {
             ],
           ),
           if (wiki.otherNames case final otherNames?)
-            textInfoRow('alias', otherNames.join(', ')),
+            textInfoRow('alias'.tr, otherNames.join(', ')),
           textInfoRow(
-            'created',
+            'created'.tr,
             DateFormatting.dateTime(wiki.createdAt.toLocal()),
           ),
           textInfoRow(
-            'updated',
+            'updated'.tr,
             DateFormatting.dateTime(
               (wiki.updatedAt ?? wiki.createdAt).toLocal(),
             ),
           ),
           if (wiki.isLocked case final isLocked?)
-            textInfoRow('locked', isLocked ? 'yes' : 'no'),
+            textInfoRow('locked'.tr, isLocked ? 'yes'.tr : 'no'.tr),
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
 
 class PopupMenuTile<T> extends PopupMenuItem<T> {
@@ -7,7 +8,7 @@ class PopupMenuTile<T> extends PopupMenuItem<T> {
     required this.icon,
     required this.title,
   }) : super(
-         child: ListMenuTile(leading: Icon(icon), title: Text(title)),
+         child: ListMenuTile(leading: Icon(icon), title: Text(title.tr)),
          value: value,
        );
 

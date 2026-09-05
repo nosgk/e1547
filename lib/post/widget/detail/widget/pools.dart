@@ -80,7 +80,11 @@ class PoolRelationTile extends StatelessWidget {
                       child: pool == null
                           ? const SizedBox.shrink()
                           : Text(
-                              '${pool.postCount} ${pool.postCount == 1 ? 'post' : 'posts'}',
+                              '{count} {plural}'.trArgs({
+                                'count': pool.postCount.toString(),
+                                'plural':
+                                    pool.postCount == 1 ? 'post'.tr : 'posts'.tr,
+                              }),
                               style: TextStyle(color: dimTextColor(context)),
                             ),
                     ),

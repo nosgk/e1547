@@ -1,4 +1,5 @@
 import 'package:e1547/post/post.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:e1547/user/user.dart';
 import 'package:flutter/material.dart';
@@ -111,7 +112,7 @@ class ArtistName extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.all(8),
         child: Text(
-          'no artist',
+          'no artist'.tr,
           style: TextStyle(
             color: Theme.of(context).textTheme.titleSmall!.color,
             fontStyle: FontStyle.italic,

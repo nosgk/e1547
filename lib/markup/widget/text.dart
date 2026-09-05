@@ -74,7 +74,10 @@ class _DTextState extends State<DText> {
               size: 20,
             ),
           ),
-          Text('DText parsing has failed', style: TextStyle(color: errorColor)),
+          Text(
+            'DText parsing has failed'.tr,
+            style: TextStyle(color: errorColor),
+          ),
         ],
       );
     }

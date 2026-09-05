@@ -80,26 +80,26 @@ class TaskTile extends StatelessWidget {
 
 String taskActionLabel(TaskAction action, TaskStatus status) {
   final String present = switch (action) {
-    TaskAction.download => 'download',
-    TaskAction.favorite => 'favorite',
-    TaskAction.unfavorite => 'unfavorite',
+    TaskAction.download => 'download'.tr,
+    TaskAction.favorite => 'favorite'.tr,
+    TaskAction.unfavorite => 'unfavorite'.tr,
   };
   final String gerund = switch (action) {
-    TaskAction.download => 'downloading',
-    TaskAction.favorite => 'favoriting',
-    TaskAction.unfavorite => 'unfavoriting',
+    TaskAction.download => 'downloading'.tr,
+    TaskAction.favorite => 'favoriting'.tr,
+    TaskAction.unfavorite => 'unfavoriting'.tr,
   };
   final String past = switch (action) {
-    TaskAction.download => 'downloaded',
-    TaskAction.favorite => 'favorited',
-    TaskAction.unfavorite => 'unfavorited',
+    TaskAction.download => 'downloaded'.tr,
+    TaskAction.favorite => 'favorited'.tr,
+    TaskAction.unfavorite => 'unfavorited'.tr,
   };
   return switch (status) {
-    TaskStatus.pending => 'queued to $present',
+    TaskStatus.pending => 'queued to {action}'.trArgs({'action': present}),
     TaskStatus.running => gerund,
     TaskStatus.completed => past,
-    TaskStatus.failed => 'failed to $present',
-    TaskStatus.canceled => 'canceled $present',
+    TaskStatus.failed => 'failed to {action}'.trArgs({'action': present}),
+    TaskStatus.canceled => 'canceled {action}'.trArgs({'action': present}),
   };
 }
 

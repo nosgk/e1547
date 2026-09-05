@@ -1,4 +1,5 @@
 import 'package:e1547/post/post.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:e1547/ticket/ticket.dart';
 import 'package:flutter/material.dart';
 
@@ -75,7 +76,7 @@ Future<Rating?> showRatingDialog({
   return showDialog<Rating>(
     context: context,
     builder: (context) => SimpleDialog(
-      title: const Text('Rating'),
+      title: Text('Rating'.tr),
       children: Rating.values
           .map(
             (rating) => ListTile(

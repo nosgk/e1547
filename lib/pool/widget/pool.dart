@@ -46,7 +46,7 @@ class PoolPage extends StatelessWidget {
                         actions: [
                           IconButton(
                             icon: const Icon(Icons.info_outline),
-                            tooltip: 'Info',
+                            tooltip: 'Info'.tr,
                             onPressed: () =>
                                 showPoolPrompt(context: context, pool: pool),
                           ),
@@ -55,7 +55,7 @@ class PoolPage extends StatelessWidget {
                       ),
                     ),
                     endDrawer: ContextDrawer(
-                      title: const Text('Pool'),
+                      title: Text('Pool'.tr),
                       children: [
                         const PoolReaderSwitch(),
                         const PoolOrderSwitch(),
@@ -95,8 +95,8 @@ class PoolOrderSwitch extends StatelessWidget {
     final oldestFirst = controller.value.poolOldestFirst;
     return SwitchListTile(
       secondary: const Icon(Icons.sort),
-      title: const Text('Pool order'),
-      subtitle: Text(oldestFirst ? 'oldest first' : 'newest first'),
+      title: Text('Pool order'.tr),
+      subtitle: Text(oldestFirst ? 'oldest first'.tr : 'newest first'.tr),
       value: oldestFirst,
       onChanged: (value) {
         final next = TagMap(controller.value.tags);
@@ -120,8 +120,8 @@ class PoolReaderSwitch extends StatelessWidget {
     final readerMode = display.value == PostDisplayType.comic;
     return SwitchListTile(
       secondary: const Icon(Icons.auto_stories),
-      title: const Text('Pool reader mode'),
-      subtitle: Text(readerMode ? 'large images' : 'normal grid'),
+      title: Text('Pool reader mode'.tr),
+      subtitle: Text(readerMode ? 'large images'.tr : 'normal grid'.tr),
       value: readerMode,
       onChanged: (value) {
         display.value = value ? PostDisplayType.comic : PostDisplayType.grid;

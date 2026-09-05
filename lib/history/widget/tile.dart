@@ -116,7 +116,7 @@ class _HistoryTileDropdown extends StatelessWidget {
       itemBuilder: (context) => [
         if (entry.isSearch(LinkType.post))
           PopupMenuTile(
-            title: 'Wiki',
+            title: 'Wiki'.tr,
             icon: Icons.info,
             value: () => showTagSearchPrompt(
               context: context,
@@ -125,17 +125,17 @@ class _HistoryTileDropdown extends StatelessWidget {
           ),
         if (entry.subtitle != null)
           PopupMenuTile(
-            title: 'Description',
+            title: 'Description'.tr,
             icon: Icons.description,
             value: () => showHistoryPrompt(context: context, entry: entry),
           ),
         PopupMenuTile(
-          title: 'Share',
+          title: 'Share'.tr,
           icon: Icons.share,
           value: () => Share.text(context, client.withHost(entry.link)),
         ),
         PopupMenuTile(
-          title: 'Delete',
+          title: 'Delete'.tr,
           icon: Icons.delete,
           value: () => client.histories.useRemove().mutate([entry.id]),
         ),

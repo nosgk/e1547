@@ -23,18 +23,20 @@ class HostUnavailablePage extends StatelessWidget {
               const Icon(Icons.cloud_off, size: 60),
               const SizedBox(height: 8),
               Text(
-                'Host unavailable',
+                'Host unavailable'.tr,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 20),
               Text(
-                'It appears that ${linkToDisplay(context.watch<Client>().host)} is not available!',
+                'It appears that {host} is not available!'.trArgs({
+                  'host': linkToDisplay(context.watch<Client>().host),
+                }),
               ),
               const SizedBox(height: 16),
               if (offerResolve && (Platform.isAndroid || Platform.isIOS)) ...[
-                const Text(
+                Text(
                   'Please resolve the issue in the following browser window. '
-                  '\n\nCloudflare captcha cookies will be saved. ',
+                  '\n\nCloudflare captcha cookies will be saved. '.tr,
                 ),
                 const SizedBox(height: 16),
                 TextButton(
@@ -43,12 +45,14 @@ class HostUnavailablePage extends StatelessWidget {
                       builder: (context) => const CookieCapturePage(),
                     ),
                   ),
-                  child: const Text('Resolve'),
+                  child: Text('Resolve'.tr),
                 ),
               ] else
                 Dimmed(
                   child: Text(
-                    '\nPlease wait for ${linkToDisplay(context.watch<Client>().host)} to resolve the situation on their end.',
+                    '\nPlease wait for {host} to resolve the situation on their end.'.trArgs({
+                      'host': linkToDisplay(context.watch<Client>().host),
+                    }),
                   ),
                 ),
             ],

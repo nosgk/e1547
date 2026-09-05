@@ -25,6 +25,13 @@ class Settings extends NotifiedSettings {
     values: AppTheme.values,
   );
 
+  /// App display language override: null = follow system locale,
+  /// true = Chinese, false = English.
+  late final ValueNotifier<bool?> language = createSetting<bool?>(
+    key: 'language',
+    initialValue: null,
+  );
+
   late final ValueNotifier<int> tileSize = createSetting(
     key: 'tileSize',
     initialValue: 200,

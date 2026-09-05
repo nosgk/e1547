@@ -23,11 +23,11 @@ class PoolInfo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          textInfoRow('posts', pool.postIds.length.toString()),
+          textInfoRow('posts'.tr, pool.postIds.length.toString()),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('id'),
+              Text('id'.tr),
               InkWell(
                 child: Text('#${pool.id}'),
                 onLongPress: () async {
@@ -39,20 +39,22 @@ class PoolInfo extends StatelessWidget {
                   messenger.showSnackBar(
                     SnackBar(
                       duration: const Duration(seconds: 1),
-                      content: Text('Copied pool id #${pool.id}'),
+                      content: Text(
+                        'Copied pool id #{id}'.trArgs({'id': pool.id}),
+                      ),
                     ),
                   );
                 },
               ),
             ],
           ),
-          textInfoRow('activity', pool.active ? 'active' : 'inactive'),
+          textInfoRow('activity'.tr, pool.active ? 'active'.tr : 'inactive'.tr),
           textInfoRow(
-            'created',
+            'created'.tr,
             DateFormatting.dateTime(pool.createdAt.toLocal()),
           ),
           textInfoRow(
-            'updated',
+            'updated'.tr,
             DateFormatting.dateTime(pool.updatedAt.toLocal()),
           ),
         ],

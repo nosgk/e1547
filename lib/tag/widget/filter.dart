@@ -343,7 +343,7 @@ class NumberFilter extends StatelessWidget {
     return TextFormField(
       key: Key('FilterList/${state.filter.tag}'),
       decoration: theme.decoration.copyWith(
-        labelText: state.filter.name,
+        labelText: state.filter.name?.tr,
         suffixIcon: mergeSuffixIcons(theme.decoration, state.filter.icon),
       ),
       keyboardType: TextInputType.number,
@@ -379,7 +379,7 @@ class NumberRangeFilter extends StatelessWidget {
           child: TextFormField(
             key: Key('FilterList/${state.filter.tag}:${state.value}'),
             decoration: theme.decoration.copyWith(
-              labelText: state.filter.name,
+              labelText: state.filter.name?.tr,
               suffixIcon: mergeSuffixIcons(theme.decoration, state.filter.icon),
             ),
             readOnly: true,
@@ -406,12 +406,12 @@ class ChoiceFilter extends StatelessWidget {
     return DropdownButtonFormField<String>(
       key: Key('FilterList/${state.filter.tag}'),
       initialValue: value,
-      decoration: theme.decoration.copyWith(labelText: state.filter.name),
+      decoration: theme.decoration.copyWith(labelText: state.filter.name?.tr),
       icon: state.filter.icon,
       isExpanded: true,
       items: [
         for (final option in state.filter.options)
-          DropdownMenuItem(value: option.value, child: Text(option.title)),
+          DropdownMenuItem(value: option.value, child: Text(option.title.tr)),
       ],
       onChanged: state.onChanged,
     );
@@ -451,14 +451,14 @@ class MultiChoiceFilter extends StatelessWidget {
       key: Key('FilterList/${state.filter.tag}'),
       options: stringOptions,
       valueMapper: (value) => value,
-      titleMapper: (value) => titleMap[value] ?? value,
+      titleMapper: (value) => (titleMap[value] ?? value).tr,
       value: selectedValues,
       onChanged: (newSelection) {
         String newValue = newSelection.join(',');
         state.onChanged(newValue);
       },
       decoration: theme.decoration.copyWith(
-        labelText: state.filter.name,
+        labelText: state.filter.name?.tr,
         suffixIcon: mergeSuffixIcons(theme.decoration, state.filter.icon),
       ),
       icon: state.filter.icon,
@@ -504,9 +504,9 @@ class ToggleFilter extends StatelessWidget {
           state.onChanged(null);
         }
       },
-      label: state.filter.name,
+      label: state.filter.name?.tr,
       title: state.filter.description != null
-          ? Text(state.filter.description!)
+          ? Text(state.filter.description!.tr)
           : null,
       decoration: theme.decoration,
     );

@@ -28,7 +28,7 @@ class DenyListEditor extends StatelessWidget {
             traits: client.traits.value.copyWith(denylist: tags),
           );
         } on ClientException {
-          return 'Failed to update blacklist!';
+          return 'Failed to update blacklist!'.tr;
         }
         return null;
       },

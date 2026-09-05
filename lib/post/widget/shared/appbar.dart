@@ -39,7 +39,7 @@ List<PopupMenuItem<VoidCallback>> postMenuUserActions(
   final cacheSize = context.read<ImageCacheSize?>()?.size;
   return [
     PopupMenuTile(
-      title: 'Edit',
+      title: 'Edit'.tr,
       icon: Icons.edit,
       value: () => guardWithLogin(
         context: context,
@@ -51,7 +51,7 @@ List<PopupMenuItem<VoidCallback>> postMenuUserActions(
             ),
           ),
         ),
-        error: 'You must be logged in to edit posts!',
+        error: 'You must be logged in to edit posts!'.tr,
       ),
     ),
     PopupMenuTile(
@@ -75,14 +75,14 @@ List<PopupMenuItem<VoidCallback>> postMenuUserActions(
       ),
     ),
     PopupMenuTile(
-      title: 'Flag',
+      title: 'Flag'.tr,
       icon: Icons.flag,
       value: () => guardWithLogin(
         context: context,
         callback: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (context) => PostFlagScreen(post: post)),
         ),
-        error: 'You must be logged in to flag posts!',
+        error: 'You must be logged in to flag posts!'.tr,
       ),
     ),
   ];

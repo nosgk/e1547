@@ -1,13 +1,14 @@
 import 'package:e1547/history/history.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
 
 extension HistorySearchFilterDisplaying on HistoryCategory {
   String get title {
     switch (this) {
       case HistoryCategory.items:
-        return 'Items';
+        return 'Items'.tr;
       case HistoryCategory.searches:
-        return 'Searches';
+        return 'Searches'.tr;
     }
   }
 
@@ -23,11 +24,11 @@ extension HistorySearchFilterDisplaying on HistoryCategory {
 
 extension HistoryTypeFilterDisplaying on HistoryType {
   String get title => switch (this) {
-    HistoryType.posts => 'Posts',
-    HistoryType.pools => 'Pools',
-    HistoryType.topics => 'Topics',
-    HistoryType.wikis => 'Wikis',
-    HistoryType.users => 'Users',
+    HistoryType.posts => 'Posts'.tr,
+    HistoryType.pools => 'Pools'.tr,
+    HistoryType.topics => 'Topics'.tr,
+    HistoryType.wikis => 'Wikis'.tr,
+    HistoryType.users => 'Users'.tr,
   };
 
   Widget? get icon => switch (this) {

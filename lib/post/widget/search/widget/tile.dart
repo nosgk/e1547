@@ -107,13 +107,13 @@ class PostTileOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (post.isDeleted) {
-      return const Center(child: Text('deleted'));
+      return Center(child: Text('deleted'.tr));
     }
     if (post.type == PostType.unsupported) {
-      return const Center(child: Text('unsupported'));
+      return Center(child: Text('unsupported'.tr));
     }
     if (post.file == null) {
-      return const Center(child: Text('unavailable'));
+      return Center(child: Text('unavailable'.tr));
     }
     return child;
   }
@@ -373,7 +373,7 @@ class PostFeedTile extends StatelessWidget {
             ),
           PopupMenuTile(
             value: () => launch(context.read<Client>().withHost(post.link)),
-            title: 'Browse',
+            title: 'Browse'.tr,
             icon: Icons.open_in_browser,
           ),
         ],

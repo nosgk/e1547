@@ -103,7 +103,7 @@ class _ReasonReportScreenState extends State<ReasonReportScreen> {
                             SnackBar(
                               duration: const Duration(seconds: 1),
                               content: Text(
-                                widget.onSuccess ?? 'Submitted report',
+                                widget.onSuccess ?? 'Submitted report'.tr,
                               ),
                               behavior: SnackBarBehavior.floating,
                             ),

@@ -106,7 +106,11 @@ class _PostReportScreenState extends State<PostReportScreen> {
         messenger.showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 1),
-            content: Text('Failed to report post #${widget.post.id}'),
+            content: Text(
+              'Failed to report post #{id}'.trArgs({
+                'id': widget.post.id.toString(),
+              }),
+            ),
           ),
         );
       }
@@ -121,7 +125,9 @@ class _PostReportScreenState extends State<PostReportScreen> {
         child: Scaffold(
           appBar: DefaultAppBar(
             elevation: 0,
-            title: Text('Post #${widget.post.id}'),
+            title: Text(
+              'Post #{id}'.trArgs({'id': widget.post.id.toString()}),
+            ),
             leading: const CloseButton(),
           ),
           floatingActionButton: Builder(

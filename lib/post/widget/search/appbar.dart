@@ -68,12 +68,14 @@ class _PostPageTitle extends StatelessWidget {
     final tags = params.tags ?? '';
     final map = TagMap(tags);
 
-    if (map.isEmpty) return const Text('Search');
-    if (map['order'] == 'rank') return const Text('Hot');
+    if (map.isEmpty) return Text('Search'.tr);
+    if (map['order'] == 'rank') return Text('Hot'.tr);
     final fav = map['fav'];
     if (fav != null) {
       return Text(
-        fav == client.identity.username ? 'Favorites' : "$fav's Favorites",
+        fav == client.identity.username
+            ? 'Favorites'.tr
+            : "{fav}'s Favorites".trArgs({'fav': fav}),
       );
     }
 

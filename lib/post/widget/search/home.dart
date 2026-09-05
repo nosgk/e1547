@@ -42,7 +42,7 @@ class HomePage extends StatelessWidget {
                     floatingActionButton: const PostsPageFab(),
                     drawer: const RouterDrawer(),
                     endDrawer: ContextDrawer(
-                      title: const Text('Posts'),
+                      title: Text('Posts'.tr),
                       children: [
                         const DrawerDenySwitch(),
                         DrawerTagCounter(

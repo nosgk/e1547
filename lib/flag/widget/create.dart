@@ -62,7 +62,11 @@ class _PostFlagScreenState extends State<PostFlagScreen> {
         messenger.showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 1),
-            content: Text('Failed to flag post #${widget.post.id}'),
+            content: Text(
+              'Failed to flag post #{id}'.trArgs({
+                'id': widget.post.id.toString(),
+              }),
+            ),
           ),
         );
       }
@@ -102,7 +106,7 @@ class _PostFlagScreenState extends State<PostFlagScreen> {
                     isLoading: isLoading,
                   ),
                   ReportFormHeader(
-                    title: const Text('Flag'),
+                    title: Text('Flag'.tr),
                     icon: IconButton(
                       onPressed: () => showTagSearchPrompt(
                         context: context,

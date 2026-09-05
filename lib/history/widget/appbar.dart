@@ -16,11 +16,11 @@ class HistoryAppBar extends StatelessWidget implements PreferredSizeWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('History'),
+            Text('History'.tr),
             CrossFade.builder(
               showChild: date != null,
               builder: (context) => Text(
-                DateFormatting.named(date!),
+                DateFormatting.named(date!).tr,
                 style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                   color: Theme.of(context).textTheme.bodySmall!.color,
                 ),
@@ -49,7 +49,7 @@ class HistorySelectionAppBar extends StatelessWidget with AppBarBuilderWidget {
       child: child,
       titleBuilder: (context, data) => data.selections.length == 1
           ? Text(data.selections.first.getName(context))
-          : Text('${data.selections.length} entries'),
+          : Text('{count} entries'.trArgs({'count': data.selections.length})),
       actionBuilder: (context, data) => [
         IconButton(
           icon: const Icon(Icons.delete_outline),

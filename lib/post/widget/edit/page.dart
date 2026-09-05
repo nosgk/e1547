@@ -101,7 +101,11 @@ class _PostEditPageState extends State<PostEditPage> {
 
       if (mounted) {
         messenger.showSnackBar(
-          SnackBar(content: Text('Updated post #${widget.post.id}')),
+          SnackBar(
+            content: Text(
+              'Updated post #{id}'.trArgs({'id': widget.post.id.toString()}),
+            ),
+          ),
         );
         Navigator.of(context).pop();
       }

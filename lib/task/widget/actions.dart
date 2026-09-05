@@ -15,7 +15,7 @@ List<Widget> taskBulkActions(
   return [
     if (hasActive)
       IconButton(
-        tooltip: 'cancel',
+        tooltip: 'cancel'.tr,
         icon: const Icon(Icons.block),
         onPressed: () async {
           for (final t in selected) {
@@ -42,7 +42,7 @@ List<Widget> taskBulkActions(
       ),
     if (hasTerminal)
       IconButton(
-        tooltip: 'dismiss',
+        tooltip: 'dismiss'.tr,
         icon: const Icon(Icons.clear_all),
         onPressed: () async {
           for (final t in selected) {

@@ -10,6 +10,7 @@ import 'package:e1547/files/files.dart';
 import 'package:e1547/follow/follow.dart';
 import 'package:e1547/identity/identity.dart';
 import 'package:e1547/logs/logs.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:e1547/traits/traits.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
@@ -208,8 +209,8 @@ NotificationDetails _createNotificationDetails({
   return NotificationDetails(
     android: AndroidNotificationDetails(
       'follows',
-      'Followed Tags',
-      channelDescription: 'Notifications for tags you are following',
+      'Followed Tags'.tr,
+      channelDescription: 'Notifications for tags you are following'.tr,
       largeIcon: thumbnailPath != null
           ? FilePathAndroidBitmap(thumbnailPath)
           : null,

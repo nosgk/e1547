@@ -1,4 +1,5 @@
 import 'package:e1547/post/post.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:flutter/material.dart';
 
@@ -26,7 +27,7 @@ class TagDisplay extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             child: Text(
-              '${category[0].toUpperCase()}${category.substring(1)}',
+              category.tr,
               style: const TextStyle(fontSize: 16),
             ),
           ),

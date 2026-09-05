@@ -57,7 +57,7 @@ class DatabaseInfoDisplay extends StatelessWidget {
     final name = dbPath.split(Platform.pathSeparator).last;
     final size = dbFile.existsSync()
         ? filesize(dbFile.lengthSync())
-        : 'Unknown';
+        : 'Unknown'.tr;
 
     return (name: name, size: size);
   }
@@ -70,8 +70,8 @@ class DatabaseInfoDisplay extends StatelessWidget {
         final dbInfo =
             snapshot.data ??
             (snapshot.error != null
-                ? (name: 'Error loading database', size: 'N/A')
-                : (name: 'Loading...', size: '...'));
+                ? (name: 'Error loading database'.tr, size: 'N/A'.tr)
+                : (name: 'Loading...'.tr, size: '...'));
 
         return Center(
           child: Column(
@@ -112,11 +112,11 @@ class DatabaseExportTile extends StatelessWidget {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const AlertDialog(
+        builder: (context) => AlertDialog(
           content: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
+              const Padding(
                 padding: EdgeInsets.all(4),
                 child: SizedBox(
                   height: 28,
@@ -125,8 +125,8 @@ class DatabaseExportTile extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Exporting database...'),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Exporting database...'.tr),
               ),
             ],
           ),
@@ -140,7 +140,7 @@ class DatabaseExportTile extends StatelessWidget {
       }
 
       String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export Database',
+        dialogTitle: 'Export Database'.tr,
         fileName: 'e1547_database_backup.db',
         type: FileType.custom,
         allowedExtensions: ['db'],
@@ -150,12 +150,12 @@ class DatabaseExportTile extends StatelessWidget {
       navigator.pop();
       if (outputFile != null) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Database exported successfully')),
+          SnackBar(content: Text('Database exported successfully'.tr)),
         );
       }
     } on Exception catch (e) {
       navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Export failed')));
+      messenger.showSnackBar(SnackBar(content: Text('Export failed'.tr)));
       _logger.warn('Database export failed', null, e);
     }
   }
@@ -164,9 +164,9 @@ class DatabaseExportTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: const Icon(Icons.file_download),
-      title: const Text('Export'),
-      subtitle: const Text(
-        'Save a backup copy of your database',
+      title: Text('Export'.tr),
+      subtitle: Text(
+        'Save a backup copy of your database'.tr,
         overflow: TextOverflow.ellipsis,
       ),
       onTap: () => _exportDatabase(context),
@@ -199,11 +199,11 @@ class DatabaseImportTile extends StatelessWidget {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const AlertDialog(
+        builder: (context) => AlertDialog(
           content: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
+              const Padding(
                 padding: EdgeInsets.all(4),
                 child: SizedBox(
                   height: 28,
@@ -212,8 +212,8 @@ class DatabaseImportTile extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Importing database...'),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Importing database...'.tr),
               ),
             ],
           ),
@@ -233,7 +233,11 @@ class DatabaseImportTile extends StatelessWidget {
       } on Exception catch (e) {
         navigator.pop();
         messenger.showSnackBar(
-          SnackBar(content: Text('Invalid database file: $e')),
+          SnackBar(
+            content: Text(
+              'Invalid database file: {error}'.trArgs({'error': e}),
+            ),
+          ),
         );
         _logger.warn('Database validation failed', null, e);
         return;
@@ -252,7 +256,11 @@ class DatabaseImportTile extends StatelessWidget {
       }
     } on Exception catch (e) {
       navigator.pop();
-      messenger.showSnackBar(SnackBar(content: Text('Import failed: $e')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Import failed: {error}'.trArgs({'error': '$e'})),
+        ),
+      );
     }
   }
 
@@ -262,22 +270,23 @@ class DatabaseImportTile extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: AlertDialog(
-          title: const Text('Import Database'),
-          content: const Text(
+          title: Text('Import Database'.tr),
+          content: Text(
             'This will replace your current database. \n'
-            'All data will be lost. This cannot be undone!',
+                    'All data will be lost. This cannot be undone!'
+                .tr,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('CANCEL'),
+              child: Text('CANCEL'.tr),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,
               ),
-              child: const Text('IMPORT'),
+              child: Text('IMPORT'.tr),
             ),
           ],
         ),
@@ -289,12 +298,12 @@ class DatabaseImportTile extends StatelessWidget {
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: const Text('Restart Required'),
-      content: const Text('The app needs to restart to apply changes.'),
+      title: Text('Restart Required'.tr),
+      content: Text('The app needs to restart to apply changes.'.tr),
       actions: [
         TextButton(
           onPressed: () => AppInit.of(context).reinitialize(),
-          child: const Text('RESTART NOW'),
+          child: Text('RESTART NOW'.tr),
         ),
       ],
     ),
@@ -304,9 +313,9 @@ class DatabaseImportTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: const Icon(Icons.file_upload),
-      title: const Text('Import'),
-      subtitle: const Text(
-        'Replace current database with imported one',
+      title: Text('Import'.tr),
+      subtitle: Text(
+        'Replace current database with imported one'.tr,
         overflow: TextOverflow.ellipsis,
       ),
       onTap: () => _importDatabase(context),

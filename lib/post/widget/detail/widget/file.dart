@@ -14,9 +14,9 @@ class FileDisplay extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          child: Text('File', style: TextStyle(fontSize: 16)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Text('File'.tr, style: const TextStyle(fontSize: 16)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),

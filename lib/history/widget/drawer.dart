@@ -17,8 +17,10 @@ class HistoryEnableTile extends StatelessWidget {
       builder: (context, countSnapshot) => ValueListenableBuilder(
         valueListenable: client.traits,
         builder: (context, traits, child) => SwitchListTile(
-          title: const Text('Enabled'),
-          subtitle: Text('${countSnapshot.data ?? 0} pages visited'),
+          title: Text('Enabled'.tr),
+          subtitle: Text(
+            '{count} pages visited'.trArgs({'count': countSnapshot.data ?? 0}),
+          ),
           secondary: const Icon(Icons.history),
           value: traits.writeHistory ?? true,
           onChanged: (value) => client.traits.value = client.traits.value
@@ -36,27 +38,27 @@ class HistoryClearTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final client = context.watch<Client>();
     return ListTile(
-      title: const Text('Clear history'),
-      subtitle: const Text('Delete all entries'),
+      title: Text('Clear history'.tr),
+      subtitle: Text('Delete all entries'.tr),
       leading: const Icon(Icons.clear_all),
       onTap: () => showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Clear history?'),
-          content: const Text(
-            'All history entries will be permanently deleted. This action cannot be undone.',
+          title: Text('Clear history?'.tr),
+          content: Text(
+            'All history entries will be permanently deleted. This action cannot be undone.'.tr,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text('Cancel'.tr),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 client.histories.useClear().mutate();
               },
-              child: const Text('Clear'),
+              child: Text('Clear'.tr),
             ),
           ],
         ),
@@ -83,15 +85,19 @@ class HistoryLimitTile extends StatelessWidget {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('History limit'),
+                title: Text('History limit'.tr),
                 content: Text(
-                  'Enabling history limit means all history entries beyond ${NumberFormat.compact().format(trimAmount)} '
-                  'and all entries older than ${trimAge.inDays ~/ 30} months are automatically deleted.',
+                  'Enabling history limit means all history entries beyond {limit} '
+                          'and all entries older than {months} months are automatically deleted.'
+                      .trArgs({
+                        'limit': NumberFormat.compact().format(trimAmount),
+                        'months': trimAge.inDays ~/ 30,
+                      }),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).maybePop(),
-                    child: const Text('CANCEL'),
+                    child: Text('CANCEL'.tr),
                   ),
                   TextButton(
                     onPressed: () {
@@ -100,7 +106,7 @@ class HistoryLimitTile extends StatelessWidget {
                       );
                       Navigator.of(context).maybePop();
                     },
-                    child: const Text('OK'),
+                    child: Text('OK'.tr),
                   ),
                 ],
               ),
@@ -116,13 +122,17 @@ class HistoryLimitTile extends StatelessWidget {
               ? Icons.hourglass_bottom
               : Icons.hourglass_empty,
         ),
-        title: const Text('Limit history'),
+        title: Text('Limit history'.tr),
         subtitle: (traits.trimHistory ?? false)
             ? Text(
-                'Limited to newer than ${trimAge.inDays ~/ 30} months or '
-                'less than ${NumberFormat.compact().format(trimAmount)} entries.',
+                'Limited to newer than {months} months or '
+                        'less than {limit} entries.'
+                    .trArgs({
+                      'months': trimAge.inDays ~/ 30,
+                      'limit': NumberFormat.compact().format(trimAmount),
+                    }),
               )
-            : const Text('history is infinite'),
+            : Text('history is infinite'.tr),
       ),
     );
   }
@@ -137,11 +147,11 @@ class HistoryCategoryFilterTile extends StatelessWidget {
       builder: (context, controller, _) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
             child: SectionHeader(
               indent: SectionHeader.listTileIndent,
-              title: 'Entries',
+              title: 'Entries'.tr,
             ),
           ),
           for (final filter in HistoryCategory.values)
@@ -181,11 +191,11 @@ class HistoryTypeFilterTile extends StatelessWidget {
       builder: (context, controller, _) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
             child: SectionHeader(
               indent: SectionHeader.listTileIndent,
-              title: 'Type',
+              title: 'Type'.tr,
             ),
           ),
           for (final filter in HistoryType.values)

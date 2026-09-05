@@ -111,8 +111,8 @@ class _TagsEditDisplayState extends State<TagsEditDisplay> {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text('Tags', style: TextStyle(fontSize: 16)),
+              Expanded(
+                child: Text('Tags'.tr, style: const TextStyle(fontSize: 16)),
               ),
               IconButton(
                 onPressed: widget.enabled == false
@@ -126,7 +126,7 @@ class _TagsEditDisplayState extends State<TagsEditDisplay> {
                         }
                       },
                 icon: Icon(_isPreviewMode ? Icons.edit : Icons.visibility),
-                tooltip: _isPreviewMode ? 'Edit' : 'Preview',
+                tooltip: _isPreviewMode ? 'Edit'.tr : 'Preview'.tr,
               ),
             ],
           ),
@@ -190,23 +190,23 @@ class TagPreviewCard extends StatelessWidget {
     final theme = Theme.of(context);
     if (tag.id == null) {
       return Text(
-        'new',
+        'new'.tr,
         style: TextStyle(fontSize: 10, color: theme.colorScheme.primary),
       );
     } else if (tag.category == TagCategory.invalid.id) {
       return Text(
-        'invalid',
+        'invalid'.tr,
         style: TextStyle(fontSize: 10, color: theme.colorScheme.error),
       );
     } else if (tag.postCount == 0) {
       return Text(
-        'empty',
+        'empty'.tr,
         style: TextStyle(fontSize: 10, color: theme.colorScheme.tertiary),
       );
     } else if (tag.postCount == 1 && tag.category == TagCategory.general.id) {
       // Underused general tag
       return Text(
-        'underused',
+        'underused'.tr,
         style: TextStyle(fontSize: 10, color: theme.colorScheme.secondary),
       );
     }
