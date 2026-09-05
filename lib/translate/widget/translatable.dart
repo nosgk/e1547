@@ -754,9 +754,9 @@ class TagTranslationToggle extends StatelessWidget {
                   caption,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: dimTextColor(context),
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
                 ),
               ),
             ),

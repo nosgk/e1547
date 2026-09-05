@@ -390,7 +390,7 @@ class TranslationService {
     _ProbeLog? log, {
     required bool retry,
   }) async {
-    for (var attempt = 0;; attempt++) {
+    for (var attempt = 0; ; attempt++) {
       try {
         await _acquireSlot();
         try {

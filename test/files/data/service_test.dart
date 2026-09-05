@@ -115,7 +115,18 @@ void main() {
 
       final response = await DioFileService(dio).get(url('/a.jpg'));
 
-      expect(response.validTill.difference(DateTime.now()).inDays, 6);
+      // validTill is "received + 7 days". The test binding runs on a
+      // virtual clock, so the elapsed time since construction can be
+      // exactly zero (or a few wall-clock milliseconds locally); comparing
+      // whole days would flip between 6 and 7. Assert the one-week
+      // interval with a small tolerance instead.
+      final difference = response.validTill.difference(DateTime.now());
+      const week = Duration(days: 7);
+      expect(difference, lessThanOrEqualTo(week + const Duration(seconds: 10)));
+      expect(
+        difference,
+        greaterThanOrEqualTo(week - const Duration(seconds: 10)),
+      );
     });
 
     test('fetches through the given dio', () async {

@@ -258,7 +258,8 @@ class _AdvancedRequestSettingsPageState
               label: 'Retry count'.tr,
               subtitle:
                   'Automatic retries after failures '
-                  '(timeout, empty response, API errors)'.tr,
+                          '(timeout, empty response, API errors)'
+                      .tr,
               value: context.read<Settings>().translateRetryCount.value,
               onChanged: (value) =>
                   context.read<Settings>().translateRetryCount.value = value,
