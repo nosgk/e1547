@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 const List<int> _kIntervals = [5, 10, 30, 60];
 
 /// Source picker of the zen slideshow: an editable tag query (prefilled
-/// with the explore page's current parameters, so the blacklist injection
+/// with the current search parameters of the calling page.
 /// stays visible) plus a slide interval. Returns the chosen configuration
 /// or null when dismissed.
-Future<void> showExploreSlideshowPicker(
+Future<void> showSlideshowPicker(
   BuildContext context, {
   required String initialTags,
 }) async {
@@ -89,8 +89,7 @@ Future<void> showExploreSlideshowPicker(
   if (tags.isEmpty || !context.mounted) return;
   await Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (context) =>
-          ExploreSlideshowPage(tags: tags, interval: interval),
+      builder: (context) => PostSlideshowPage(tags: tags, interval: interval),
     ),
   );
 }
@@ -98,8 +97,8 @@ Future<void> showExploreSlideshowPicker(
 /// Fullscreen, auto-advancing slideshow. Pages are pulled from the posts
 /// index as the show runs out of material; the display fades between
 /// slides and every control hides itself until the screen is tapped.
-class ExploreSlideshowPage extends StatefulWidget {
-  const ExploreSlideshowPage({
+class PostSlideshowPage extends StatefulWidget {
+  const PostSlideshowPage({
     super.key,
     required this.tags,
     required this.interval,
@@ -109,10 +108,10 @@ class ExploreSlideshowPage extends StatefulWidget {
   final Duration interval;
 
   @override
-  State<ExploreSlideshowPage> createState() => _ExploreSlideshowPageState();
+  State<PostSlideshowPage> createState() => _PostSlideshowPageState();
 }
 
-class _ExploreSlideshowPageState extends State<ExploreSlideshowPage> {
+class _PostSlideshowPageState extends State<PostSlideshowPage> {
   final List<Post> _posts = [];
   int _index = 0;
   int _nextPage = 1;

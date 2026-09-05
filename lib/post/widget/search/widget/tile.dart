@@ -49,52 +49,48 @@ class PostImageTile extends StatelessWidget {
     } on Object {
       previewVideoAutoplay = false;
     }
-    return GachaGuard(
-      post: post,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: SelectionItemOverlay(
-          item: post,
-          child: Stack(
-            fit: StackFit.passthrough,
-            clipBehavior: Clip.none,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: PostTileOverlay(
-                      post: post,
-                      child: Hero(
-                        tag: post.link,
-                        child: previewVideoAutoplay
-                            ? PreviewVideoAutoplay(post: post, fit: fit)
-                            : PostImageWidget(
-                                post: post,
-                                size: previewGifAutoplay == true
-                                    ? PostImageSize.file
-                                    : (size ?? PostImageSize.sample),
-                                fit: fit ?? BoxFit.cover,
-                                showProgress: showProgress ?? false,
-                                withLowRes: withLowRes ?? false,
-                                cacheSize: context
-                                    .watch<ImageCacheSize?>()
-                                    ?.size,
-                              ),
-                      ),
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: SelectionItemOverlay(
+        item: post,
+        child: Stack(
+          fit: StackFit.passthrough,
+          clipBehavior: Clip.none,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: PostTileOverlay(
+                    post: post,
+                    child: Hero(
+                      tag: post.link,
+                      child: previewVideoAutoplay
+                          ? PreviewVideoAutoplay(post: post, fit: fit)
+                          : PostImageWidget(
+                              post: post,
+                              size: previewGifAutoplay == true
+                                  ? PostImageSize.file
+                                  : (size ?? PostImageSize.sample),
+                              fit: fit ?? BoxFit.cover,
+                              showProgress: showProgress ?? false,
+                              withLowRes: withLowRes ?? false,
+                              cacheSize: context.watch<ImageCacheSize?>()?.size,
+                            ),
                     ),
                   ),
-                  if (bottomBar != null) bottomBar!,
-                ],
-              ),
-              Positioned(top: 0, right: 0, child: PostImageTag(post: post)),
+                ),
+                if (bottomBar != null) bottomBar!,
+              ],
+            ),
+            Positioned(top: 0, right: 0, child: PostImageTag(post: post)),
+            if (onTap != null)
               if (onTap != null)
                 Material(
                   type: MaterialType.transparency,
                   child: InkWell(onTap: onTap),
                 ),
-            ],
-          ),
+          ],
         ),
       ),
     );

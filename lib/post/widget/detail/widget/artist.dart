@@ -81,36 +81,32 @@ class ArtistName extends StatelessWidget {
   Widget build(BuildContext context) {
     List<String> artists = filterArtists(post.tags['artist'] ?? []);
     if (artists.isNotEmpty) {
-      return QuizGuard(
-        post: post,
-        names: artists,
-        child: OverflowBar(
-          children: [
-            for (String artist in artists)
-              TagGesture(
-                tag: artist,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Icon(Icons.account_circle),
+      return OverflowBar(
+        children: [
+          for (String artist in artists)
+            TagGesture(
+              tag: artist,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Icon(Icons.account_circle),
+                    ),
+                    Flexible(
+                      child: Text(
+                        tagToName(artist),
+                        overflow: TextOverflow.fade,
+                        style: const TextStyle(fontSize: 14),
                       ),
-                      Flexible(
-                        child: Text(
-                          tagToName(artist),
-                          overflow: TextOverflow.fade,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       );
     } else {
       return Padding(

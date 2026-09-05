@@ -4,5 +4,8 @@ export 'home.dart';
 export 'hot.dart';
 export 'list.dart';
 export 'page.dart';
+export 'presets.dart';
 export 'query.dart';
+export 'slideshow.dart';
+export 'tools.dart';
 export 'widget/widget.dart';

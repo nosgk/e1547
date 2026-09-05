@@ -127,8 +127,9 @@ class Settings extends NotifiedSettings {
     initialValue: 0,
   );
 
-  /// Saved explore searches ("[{name, tags}]"), managed in the explore
-  /// page's settings drawer.
+  /// Saved post searches ("[{name, tags}]") with remarks, managed in the
+  /// home page's settings drawer. The storage key predates the feature's
+  /// move and is kept so saved entries survive updates.
   late final ValueNotifier<String> explorePresets = createSetting(
     key: 'explorePresets',
     initialValue: '[]',

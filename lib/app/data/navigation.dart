@@ -39,13 +39,6 @@ final List<RouterDrawerDestination> rootDestintations = [
     group: _drawerSearchGroup,
   ),
   NamedRouterDrawerDestination(
-    path: '/explore',
-    name: 'Explore',
-    icon: const Icon(Icons.casino_outlined),
-    builder: (context) => const ExplorePage(),
-    group: _drawerSearchGroup,
-  ),
-  NamedRouterDrawerDestination(
     path: '/favorites',
     name: 'Favorites',
     icon: const Icon(Icons.favorite),
