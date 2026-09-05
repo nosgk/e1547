@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:e1547/client/client.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/translate/translate.dart';
@@ -110,9 +109,6 @@ class _PostDetailState extends State<PostDetail> {
           child: Scaffold(
             extendBodyBehindAppBar: true,
             appBar: PostDetailAppBar(post: post),
-            floatingActionButton: context.read<Client>().hasLogin
-                ? PostDetailFab(post: post)
-                : null,
             body: MediaQuery.removeViewInsets(
               context: context,
               removeTop: true,

@@ -127,6 +127,13 @@ class Settings extends NotifiedSettings {
     initialValue: 0,
   );
 
+  /// Saved explore searches ("[{name, tags}]"), managed in the explore
+  /// page's settings drawer.
+  late final ValueNotifier<String> explorePresets = createSetting(
+    key: 'explorePresets',
+    initialValue: '[]',
+  );
+
   // -------------------------------------------------------------------------
   // Appearance
   // -------------------------------------------------------------------------

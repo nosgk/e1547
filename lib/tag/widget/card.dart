@@ -100,12 +100,13 @@ class DenyListTagCard extends StatelessWidget {
 }
 
 /// Tag name text with its translation, when tag translation is active:
-/// either the surrounding [TagTranslationScope] toggle is on (gallery and
-/// post detail page toolbars) or the global tag auto-translate setting.
-/// Each tag is translated with a single request. While loading a micro
-/// spinner shows next to the name (repeat requests are dropped); failures
-/// show the error message below the name and tapping it retries; success
-/// shows the translation below the original text.
+/// the surrounding [TagTranslationScope] toggle is authoritative where one
+/// exists (gallery and post detail page toolbars — it fully controls this
+/// page, on and off), otherwise the global tag auto-translate setting
+/// applies. Each tag is translated with a single request. While loading a
+/// micro spinner shows next to the name (repeat requests are dropped);
+/// failures show the error message below the name and tapping it retries;
+/// success shows the translation below the original text.
 class TranslatedTagText extends StatelessWidget {
   const TranslatedTagText({super.key, required this.tag});
 
@@ -124,9 +125,12 @@ class TranslatedTagText extends StatelessWidget {
         if (scope != null) scope,
       ]),
       builder: (context, _) {
+        // The scope toggle, when present, overrides the global setting so
+        // switching it off always hides (and stops) the page's tag
+        // translations.
         final active =
             settings.translateEnabled.value &&
-            ((scope?.value ?? false) || settings.translateTagsAuto.value);
+            (scope?.value ?? settings.translateTagsAuto.value);
         if (!active) return _plain(context);
         return TranslatableHost(
           text: tagToName(tag),

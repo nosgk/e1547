@@ -89,9 +89,12 @@ class UserAvatar extends StatelessWidget {
   }
 }
 
-/// Avatar of the user with [userId], fetched on demand (cached by the query
-/// layer). Falls back to the empty avatar while loading or when the user
-/// has no avatar. Used wherever only a user id is known (comments, forum).
+/// Avatar of the user with [userId]. The user record is read from the
+/// vendored cache; ids missing from the cache are reported to the
+/// [UserBatcher], which coalesces them into batched requests (comment
+/// sections would otherwise fire one request per visible avatar). Falls
+/// back to the empty avatar while loading or when the user has no avatar.
+/// Used wherever only a user id is known (comments, forum).
 class UserIdAvatar extends StatelessWidget {
   const UserIdAvatar({
     super.key,
@@ -113,6 +116,11 @@ class UserIdAvatar extends StatelessWidget {
       query: client.users.useGet(id: userId, vendored: true),
       builder: (context, state) {
         final user = state.data;
+        if (user == null) {
+          // Cache miss: queue a batched fetch; the cache write-back below
+          // rebuilds this builder with the user.
+          client.users.batcher.request(userId);
+        }
         return UserAvatar(
           id: user?.avatarId,
           userId: userId,
