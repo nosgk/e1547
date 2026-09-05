@@ -97,10 +97,7 @@ class _OnboardingPagerState extends State<_OnboardingPager> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (page > 0)
-                          TextButton(
-                            onPressed: back,
-                            child: Text('Back'.tr),
-                          ),
+                          TextButton(onPressed: back, child: Text('Back'.tr)),
                         const Spacer(),
                         if (!isLast)
                           ElevatedButton(

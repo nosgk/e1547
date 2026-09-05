@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to bump"
+        description: "版本递增类型（Debug 构建建议选 none）"
         required: true
         type: choice
         default: "none"
@@ -16,23 +16,37 @@ on:
           - pre
           - release
       release_title:
-        description: "Release title"
+        description: "发布标题（GitHub Release 名称，可留空）"
         type: string
         required: false
+      platforms:
+        description: "构建平台（单选平台时产物仅上传 Artifacts，不发布）"
+        type: choice
+        default: "all"
+        options:
+          - all
+          - android
+          - ios
+          - windows
+          - linux
+      build_debug:
+        description: "构建安卓 Debug 版（仅 arm64-v8a，调试签名，跳过发布）"
+        type: boolean
+        default: false
       dry_run:
-        description: "Build and validate without publishing"
+        description: "试运行（只构建不发布）"
         type: boolean
         default: false
       skip_playstore:
-        description: "Skip the Play Store upload"
+        description: "跳过 Play Store 上架"
         type: boolean
         default: false
       skip_github_release:
-        description: "Skip the GitHub release"
+        description: "跳过 GitHub Release 发布"
         type: boolean
         default: false
       skip_forum:
-        description: "Skip the forum post"
+        description: "跳过 e621 论坛发帖"
         type: boolean
         default: false
 
@@ -75,6 +89,7 @@ jobs:
           dart pub global run cider bump ${{ env.VERSION_BUMP }} --bump-build
 
       - name: configure release keys
+        if: ${{ github.event.inputs.build_debug != 'true' }}
         env:
           KEYSTORE: ${{ secrets.KEYSTORE }}
           KEYCONFIG: ${{ secrets.KEYCONFIG }}
@@ -121,6 +136,8 @@ jobs:
           path: app-release.aab
 
   ios-build:
+    name: iOS 构建
+    if: ${{ github.event.inputs.build_debug != 'true' && (github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'ios') }}
     runs-on: macos-latest
     steps:
       - name: setup actions
@@ -432,6 +449,7 @@ jobs:
             e1547.tar.gz
 
   forum-publish:
+    name: 论坛发帖
     needs: [release]
     if: ${{ github.ref == 'refs/heads/master' && github.event.inputs.skip_forum != 'true' && github.event.inputs.dry_run != 'true' }}
     runs-on: ubuntu-latest

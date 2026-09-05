@@ -116,9 +116,9 @@ class FollowForceSyncTile extends StatelessWidget {
                     ? Text('sync all follows'.tr)
                     : Text(
                         '{percent} syncing follows...'.trArgs({
-                          'percent': NumberFormat('0.#%').format(
-                            progressSnapshot.data ?? 0,
-                          ),
+                          'percent': NumberFormat(
+                            '0.#%',
+                          ).format(progressSnapshot.data ?? 0),
                         }),
                       ),
                 enabled: enabled,

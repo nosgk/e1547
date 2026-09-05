@@ -23,9 +23,7 @@ class TopicLoadingPage extends StatelessWidget {
         loadingBuilder: (context, child) => Scaffold(
           appBar: AppBar(
             leading: const CloseButton(),
-            title: Text(
-              'Topic #{id}'.trArgs({'id': id.toString()}),
-            ),
+            title: Text('Topic #{id}'.trArgs({'id': id.toString()})),
           ),
           body: child(context),
         ),

@@ -53,9 +53,7 @@ class LogFileSelectionAppBar extends StatelessWidget with AppBarBuilderWidget {
       child: child,
       titleBuilder: (context, data) => data.selections.length == 1
           ? Text('Logs - {date}'.trArgs({'date': data.selections.first.date}))
-          : Text(
-              '{count} log files'.trArgs({'count': data.selections.length}),
-            ),
+          : Text('{count} log files'.trArgs({'count': data.selections.length})),
       actionBuilder: (context, data) => [
         if (onDelete != null)
           IconButton(
@@ -90,9 +88,7 @@ class LogFileDeleteConfirmation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
-        'Delete {count} log files?'.trArgs({'count': files.length}),
-      ),
+      title: Text('Delete {count} log files?'.trArgs({'count': files.length})),
       content: Text('This action cannot be undone.'.tr),
       actions: [
         TextButton(

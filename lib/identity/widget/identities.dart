@@ -50,7 +50,8 @@ class IdentitiesPage extends StatelessWidget {
                     builder: (context) => AlertDialog(
                       title: Text('Remove account?'.tr),
                       content: Text(
-                        'All its data will be permanently removed, including history and follows.'.tr,
+                        'All its data will be permanently removed, including history and follows.'
+                            .tr,
                       ),
                       actions: [
                         TextButton(

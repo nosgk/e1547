@@ -82,8 +82,9 @@ class PoolRelationTile extends StatelessWidget {
                           : Text(
                               '{count} {plural}'.trArgs({
                                 'count': pool.postCount.toString(),
-                                'plural':
-                                    pool.postCount == 1 ? 'post'.tr : 'posts'.tr,
+                                'plural': pool.postCount == 1
+                                    ? 'post'.tr
+                                    : 'posts'.tr,
                               }),
                               style: TextStyle(color: dimTextColor(context)),
                             ),

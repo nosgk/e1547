@@ -21,9 +21,7 @@ class CommentLoadingPage extends StatelessWidget {
         loadingBuilder: (context, child) => Scaffold(
           appBar: AppBar(
             leading: const CloseButton(),
-            title: Text(
-              'Comment #{id}'.trArgs({'id': id.toString()}),
-            ),
+            title: Text('Comment #{id}'.trArgs({'id': id.toString()})),
           ),
           body: child(context),
         ),

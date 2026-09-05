@@ -91,9 +91,7 @@ class FollowsSubscriptionsPage extends StatelessWidget {
                               itemBuilder: (context, item, index) =>
                                   FollowTile(follow: item),
                               onEmpty: Text('No subscriptions'.tr),
-                              onError: Text(
-                                'Failed to load subscriptions'.tr,
-                              ),
+                              onError: Text('Failed to load subscriptions'.tr),
                             ),
                             crossAxisCount: TileLayout.of(
                               context,

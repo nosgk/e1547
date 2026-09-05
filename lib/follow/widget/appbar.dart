@@ -17,9 +17,7 @@ class FollowSelectionAppBar extends StatelessWidget with AppBarBuilderWidget {
       child: child,
       titleBuilder: (context, data) => data.selections.length == 1
           ? Text(data.selections.first.name)
-          : Text(
-              '{count} follows'.trArgs({'count': data.selections.length}),
-            ),
+          : Text('{count} follows'.trArgs({'count': data.selections.length})),
       actionBuilder: (context, data) {
         int unseen = data.selections.fold(0, (a, b) => a + (b.unseen ?? 0));
         bool bookmarked = data.selections.every(

@@ -108,8 +108,9 @@ class DrawerDenySwitchBody extends StatelessWidget {
               ? TweenAnimationBuilder<int>(
                   tween: IntTween(begin: 0, end: blockedCount),
                   duration: defaultAnimationDuration,
-                  builder: (context, value, child) =>
-                      Text('{count} posts blocked'.trArgs({'count': value.toString()})),
+                  builder: (context, value, child) => Text(
+                    '{count} posts blocked'.trArgs({'count': value.toString()}),
+                  ),
                 )
               : null,
           secondary: const Icon(Icons.block),

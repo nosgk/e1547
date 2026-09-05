@@ -40,7 +40,9 @@ abstract final class Share {
       messenger.showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 1),
-          content: Text('File saved as {name}'.trArgs({'name': basename(outputFile)})),
+          content: Text(
+            'File saved as {name}'.trArgs({'name': basename(outputFile)}),
+          ),
         ),
       );
     }

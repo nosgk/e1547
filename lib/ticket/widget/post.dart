@@ -125,9 +125,7 @@ class _PostReportScreenState extends State<PostReportScreen> {
         child: Scaffold(
           appBar: DefaultAppBar(
             elevation: 0,
-            title: Text(
-              'Post #{id}'.trArgs({'id': widget.post.id.toString()}),
-            ),
+            title: Text('Post #{id}'.trArgs({'id': widget.post.id.toString()})),
             leading: const CloseButton(),
           ),
           floatingActionButton: Builder(

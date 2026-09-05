@@ -36,7 +36,8 @@ class HostUnavailablePage extends StatelessWidget {
               if (offerResolve && (Platform.isAndroid || Platform.isIOS)) ...[
                 Text(
                   'Please resolve the issue in the following browser window. '
-                  '\n\nCloudflare captcha cookies will be saved. '.tr,
+                          '\n\nCloudflare captcha cookies will be saved. '
+                      .tr,
                 ),
                 const SizedBox(height: 16),
                 TextButton(
@@ -50,9 +51,10 @@ class HostUnavailablePage extends StatelessWidget {
               ] else
                 Dimmed(
                   child: Text(
-                    '\nPlease wait for {host} to resolve the situation on their end.'.trArgs({
-                      'host': linkToDisplay(context.watch<Client>().host),
-                    }),
+                    '\nPlease wait for {host} to resolve the situation on their end.'
+                        .trArgs({
+                          'host': linkToDisplay(context.watch<Client>().host),
+                        }),
                   ),
                 ),
             ],

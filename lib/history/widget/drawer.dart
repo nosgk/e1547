@@ -46,7 +46,8 @@ class HistoryClearTile extends StatelessWidget {
         builder: (context) => AlertDialog(
           title: Text('Clear history?'.tr),
           content: Text(
-            'All history entries will be permanently deleted. This action cannot be undone.'.tr,
+            'All history entries will be permanently deleted. This action cannot be undone.'
+                .tr,
           ),
           actions: [
             TextButton(

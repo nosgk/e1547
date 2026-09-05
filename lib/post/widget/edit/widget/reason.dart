@@ -15,7 +15,10 @@ class EditReasonDisplay extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Edit reason (optional)'.tr, style: const TextStyle(fontSize: 16)),
+          Text(
+            'Edit reason (optional)'.tr,
+            style: const TextStyle(fontSize: 16),
+          ),
           const SizedBox(height: 8),
           TextFormField(
             controller: controller,

@@ -12,9 +12,7 @@ class ReplyReportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReasonReportScreen(
-      title: Text(
-        'Reply #{id}'.trArgs({'id': reply.id.toString()}),
-      ),
+      title: Text('Reply #{id}'.trArgs({'id': reply.id.toString()})),
       onReport: (reason) => validateCall(
         () => context.read<Client>().tickets.create(
           type: TicketType.forum,

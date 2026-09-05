@@ -12,9 +12,7 @@ class UserReportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReasonReportScreen(
-      title: Text(
-        'User #{id}'.trArgs({'id': user.id.toString()}),
-      ),
+      title: Text('User #{id}'.trArgs({'id': user.id.toString()})),
       onReport: (reason) => validateCall(
         () => context.read<Client>().tickets.create(
           type: TicketType.user,

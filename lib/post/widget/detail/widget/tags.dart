@@ -26,10 +26,7 @@ class TagDisplay extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Text(
-              category.tr,
-              style: const TextStyle(fontSize: 16),
-            ),
+            child: Text(category.tr, style: const TextStyle(fontSize: 16)),
           ),
           Row(children: [Expanded(child: tagCategory(category))]),
           const Divider(),
