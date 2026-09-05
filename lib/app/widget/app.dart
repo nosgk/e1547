@@ -89,6 +89,7 @@ class App extends StatelessWidget {
                                       TraitsClientProvider(),
                                       ClientProvider(),
                                       FileCacheProvider(),
+                                      MediaCacheProvider(),
                                       TasksControllerProvider(),
                                     ],
                                     child: LoadingCore(

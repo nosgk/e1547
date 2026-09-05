@@ -235,33 +235,42 @@ class _AdvancedRequestSettingsPageState
               ),
             ),
             _sectionHeader('Performance & Rate Limiting'.tr),
-            _NumberSettingTile(
+            NumberSettingTile(
               label: 'Max concurrent requests'.tr,
               value: context.read<Settings>().translateConcurrency.value,
               onChanged: (value) =>
                   context.read<Settings>().translateConcurrency.value = value,
             ),
-            _NumberSettingTile(
+            NumberSettingTile(
               label: 'Request interval (ms)'.tr,
               value: context.read<Settings>().translateIntervalMs.value,
               onChanged: (value) =>
                   context.read<Settings>().translateIntervalMs.value = value,
             ),
-            _NumberSettingTile(
+            NumberSettingTile(
               label: 'Request timeout (s)'.tr,
               value: context.read<Settings>().translateTimeoutSeconds.value,
               onChanged: (value) =>
                   context.read<Settings>().translateTimeoutSeconds.value =
                       value,
             ),
-            _NumberSettingTile(
+            NumberSettingTile(
+              label: 'Retry count'.tr,
+              subtitle:
+                  'Automatic retries after failures '
+                  '(timeout, empty response, API errors)'.tr,
+              value: context.read<Settings>().translateRetryCount.value,
+              onChanged: (value) =>
+                  context.read<Settings>().translateRetryCount.value = value,
+            ),
+            NumberSettingTile(
               label: 'Max text length per request'.tr,
               subtitle: 'Characters sent in one request; 0 = unlimited'.tr,
               value: context.read<Settings>().translateMaxTextLength.value,
               onChanged: (value) =>
                   context.read<Settings>().translateMaxTextLength.value = value,
             ),
-            _NumberSettingTile(
+            NumberSettingTile(
               label: 'Max paragraphs per request'.tr,
               subtitle:
                   'Newline-separated paragraphs per request; 0 = unlimited'.tr,
@@ -598,9 +607,12 @@ class _CodeBox extends StatelessWidget {
   }
 }
 
-/// Compact numeric setting row: label on the left, small field on the right.
-class _NumberSettingTile extends StatefulWidget {
-  const _NumberSettingTile({
+/// Compact numeric setting row: label on the left, small field on the
+/// right. Shared by the request configurator and the translation settings
+/// cache section.
+class NumberSettingTile extends StatefulWidget {
+  const NumberSettingTile({
+    super.key,
     required this.label,
     required this.value,
     required this.onChanged,
@@ -613,16 +625,16 @@ class _NumberSettingTile extends StatefulWidget {
   final ValueChanged<int> onChanged;
 
   @override
-  State<_NumberSettingTile> createState() => _NumberSettingTileState();
+  State<NumberSettingTile> createState() => _NumberSettingTileState();
 }
 
-class _NumberSettingTileState extends State<_NumberSettingTile> {
+class _NumberSettingTileState extends State<NumberSettingTile> {
   late final TextEditingController controller = TextEditingController(
     text: '${widget.value}',
   );
 
   @override
-  void didUpdateWidget(covariant _NumberSettingTile oldWidget) {
+  void didUpdateWidget(covariant NumberSettingTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     final parsed = int.tryParse(controller.text);
     if (parsed == null || parsed != widget.value) {

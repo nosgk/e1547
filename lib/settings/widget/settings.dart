@@ -243,40 +243,39 @@ class SettingsPage extends StatelessWidget {
                 ),
                 ValueListenableBuilder<double>(
                   valueListenable: settings.drawerWidth,
-                  builder: (context, value, child) => ListTile(
-                    title: Text('Drawer width'.tr),
-                    subtitle: Slider(
-                      value: value.clamp(240, 400).toDouble(),
-                      min: 240,
-                      max: 400,
-                      divisions: 32,
-                      label: value.round().toString(),
-                      onChanged: (value) => settings.drawerWidth.value = value,
-                    ),
-                    leading: const Icon(Icons.menu_open),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.restart_alt),
-                      onPressed: () => settings.drawerWidth.value = 304,
-                    ),
+                  builder: (context, value, child) => SliderSettingTile(
+                    title: 'Drawer width'.tr,
+                    icon: Icons.menu_open,
+                    // Stored in logical pixels, edited in logical pixels.
+                    min: 200,
+                    max: 480,
+                    divisions: 28,
+                    value: value.clamp(200, 480),
+                    format: (value) => '${value.round()}',
+                    parse: (text) => double.tryParse(text),
+                    suffix: 'dp',
+                    onChanged: (value) => settings.drawerWidth.value = value,
+                    onReset: () => settings.drawerWidth.value = 304,
                   ),
                 ),
                 ValueListenableBuilder<double>(
                   valueListenable: settings.fontScale,
-                  builder: (context, value, child) => ListTile(
-                    title: Text('Font size'.tr),
-                    subtitle: Slider(
-                      value: value.clamp(0.8, 1.4),
-                      min: 0.8,
-                      max: 1.4,
-                      divisions: 12,
-                      label: '${(value * 100).round()}%',
-                      onChanged: (value) => settings.fontScale.value = value,
-                    ),
-                    leading: const Icon(Icons.format_size),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.restart_alt),
-                      onPressed: () => settings.fontScale.value = 1,
-                    ),
+                  builder: (context, value, child) => SliderSettingTile(
+                    title: 'Font size'.tr,
+                    icon: Icons.format_size,
+                    // Stored as a scale factor, edited as a percentage.
+                    min: 0.7,
+                    max: 1.8,
+                    divisions: 22,
+                    value: value.clamp(0.7, 1.8),
+                    format: (value) => '${(value * 100).round()}',
+                    parse: (text) => switch (double.tryParse(text)) {
+                      null => null,
+                      final percent => percent / 100,
+                    },
+                    suffix: '%',
+                    onChanged: (value) => settings.fontScale.value = value,
+                    onReset: () => settings.fontScale.value = 1,
                   ),
                 ),
                 ValueListenableBuilder<bool>(
@@ -462,6 +461,7 @@ class SettingsPage extends StatelessWidget {
                       },
                     ),
                   ),
+                const MediaCacheTile(),
                 ValueListenableBuilder<bool>(
                   valueListenable: settings.upvoteFavs,
                   builder: (context, value, child) => SwitchListTile(

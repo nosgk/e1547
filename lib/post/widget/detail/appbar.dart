@@ -1,5 +1,6 @@
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
 class PostDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -15,6 +16,9 @@ class PostDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
     return TransparentAppBar(
       child: DefaultAppBar(
         actions: [
+          // Scoped tag translation toggle, with a small "Translated by …"
+          // caption naming the configured service while active.
+          const TagTranslationToggle(),
           PopupMenuButton<VoidCallback>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) => value(),

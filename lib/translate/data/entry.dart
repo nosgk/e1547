@@ -20,6 +20,7 @@ class TranslationEntry extends ChangeNotifier {
   String? _providerLabel;
   bool _expanded = false;
   bool _autoAttempted = false;
+  bool _disposed = false;
 
   TranslationStatus get status => _status;
 
@@ -60,11 +61,13 @@ class TranslationEntry extends ChangeNotifier {
         text: text,
         config: config,
       );
+      if (_disposed) return;
       _translation = result.text;
       _providerLabel = result.providerLabel;
       _status = TranslationStatus.success;
       _expanded = true;
     } on Object catch (error) {
+      if (_disposed) return;
       if (error is TranslationException) {
         _error = error.message;
         _errorCode = error.code;
@@ -75,6 +78,15 @@ class TranslationEntry extends ChangeNotifier {
       _status = TranslationStatus.error;
     }
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    // The in-flight request completes after the host dropped this entry
+    // (e.g. the tag translation toggle switched off); drop the result
+    // instead of notifying a disposed notifier.
+    _disposed = true;
+    super.dispose();
   }
 
   /// Expands a previously loaded translation without requesting it again.

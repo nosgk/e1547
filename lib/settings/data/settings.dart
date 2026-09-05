@@ -120,6 +120,13 @@ class Settings extends NotifiedSettings {
     initialValue: false,
   );
 
+  /// Disk budget of the media file cache, in megabytes. 0 = unlimited.
+  /// When the budget is exceeded the oldest cache entries are evicted.
+  late final ValueNotifier<int> mediaCacheLimitMb = createSetting(
+    key: 'mediaCacheLimitMb',
+    initialValue: 0,
+  );
+
   // -------------------------------------------------------------------------
   // Appearance
   // -------------------------------------------------------------------------
@@ -223,6 +230,17 @@ class Settings extends NotifiedSettings {
   late final ValueNotifier<int> translateMaxParagraphs = createSetting(
     key: 'translateMaxParagraphs',
     initialValue: kDefaultTranslateMaxParagraphs,
+  );
+  late final ValueNotifier<int> translateRetryCount = createSetting(
+    key: 'translateRetryCount',
+    initialValue: kDefaultTranslateRetryCount,
+  );
+
+  // Translation cache: maximum entry count (0 = unlimited), edited next to
+  // the cache statistics & clear control in the translation settings.
+  late final ValueNotifier<int> translateCacheLimit = createSetting(
+    key: 'translateCacheLimit',
+    initialValue: kDefaultTranslateCacheLimit,
   );
 
   // OpenAI-compatible provider settings.

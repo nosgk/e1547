@@ -3,13 +3,39 @@ import 'dart:math';
 import 'package:e1547/client/client.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
-class PostDetail extends StatelessWidget {
+class PostDetail extends StatefulWidget {
   const PostDetail({super.key, required this.post, this.onTapImage});
 
   final Post post;
   final VoidCallback? onTapImage;
+
+  @override
+  State<PostDetail> createState() => _PostDetailState();
+}
+
+class _PostDetailState extends State<PostDetail> {
+  late final ValueNotifier<bool> _tagTranslation;
+
+  @override
+  void initState() {
+    super.initState();
+    // The detail-page tag translation toggle starts from the global tag
+    // auto-translate setting.
+    _tagTranslation = ValueNotifier(
+      trySettingsOf(context)?.translateTagsAuto.value ?? false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tagTranslation.dispose();
+    super.dispose();
+  }
+
+  Post get post => widget.post;
 
   Widget image(BuildContext context, Size size) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
@@ -26,8 +52,8 @@ class PostDetail extends StatelessWidget {
           post: post,
           onTap: () {
             PostVideoRoute.of(context).keepPlaying();
-            if (onTapImage != null) {
-              onTapImage!();
+            if (widget.onTapImage != null) {
+              widget.onTapImage!();
             } else {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -75,79 +101,82 @@ class PostDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PostVideoRoute(
-      post: post,
-      child: PostHistoryConnector(
+    return TagTranslationScope(
+      enabled: _tagTranslation,
+      child: PostVideoRoute(
         post: post,
-        child: Scaffold(
-          extendBodyBehindAppBar: true,
-          appBar: PostDetailAppBar(post: post),
-          floatingActionButton: context.read<Client>().hasLogin
-              ? PostDetailFab(post: post)
-              : null,
-          body: MediaQuery.removeViewInsets(
-            context: context,
-            removeTop: true,
-            child: Builder(
-              builder: (context) {
-                final size = MediaQuery.sizeOf(context);
-                if (size.width < 1000) {
-                  return ListView(
-                    primary: true,
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top,
-                      bottom: kBottomNavigationBarHeight + 24,
-                    ),
-                    children: [
-                      image(context, size),
-                      upperBody(context),
-                      middleBody(context),
-                      lowerBody(context),
-                    ],
-                  );
-                } else {
-                  double sideBarWidth;
-                  if (size.width > 1400) {
-                    sideBarWidth = 404;
+        child: PostHistoryConnector(
+          post: post,
+          child: Scaffold(
+            extendBodyBehindAppBar: true,
+            appBar: PostDetailAppBar(post: post),
+            floatingActionButton: context.read<Client>().hasLogin
+                ? PostDetailFab(post: post)
+                : null,
+            body: MediaQuery.removeViewInsets(
+              context: context,
+              removeTop: true,
+              child: Builder(
+                builder: (context) {
+                  final size = MediaQuery.sizeOf(context);
+                  if (size.width < 1000) {
+                    return ListView(
+                      primary: true,
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top,
+                        bottom: kBottomNavigationBarHeight + 24,
+                      ),
+                      children: [
+                        image(context, size),
+                        upperBody(context),
+                        middleBody(context),
+                        lowerBody(context),
+                      ],
+                    );
                   } else {
-                    sideBarWidth = 304;
-                  }
-                  return CustomScrollView(
-                    primary: true,
-                    slivers: [
-                      SliverCrossAxisGroup(
-                        slivers: [
-                          SliverMainAxisGroup(
-                            slivers: [
-                              SliverToBoxAdapter(
+                    double sideBarWidth;
+                    if (size.width > 1400) {
+                      sideBarWidth = 404;
+                    } else {
+                      sideBarWidth = 304;
+                    }
+                    return CustomScrollView(
+                      primary: true,
+                      slivers: [
+                        SliverCrossAxisGroup(
+                          slivers: [
+                            SliverMainAxisGroup(
+                              slivers: [
+                                SliverToBoxAdapter(
+                                  child: Column(
+                                    children: [
+                                      image(context, size),
+                                      upperBody(context),
+                                    ],
+                                  ),
+                                ),
+                                SliverPostCommentSection(postId: post.id),
+                              ],
+                            ),
+                            SliverConstrainedCrossAxis(
+                              maxExtent: sideBarWidth,
+                              sliver: SliverToBoxAdapter(
                                 child: Column(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    image(context, size),
-                                    upperBody(context),
+                                    const SizedBox(height: 56),
+                                    lowerBody(context),
                                   ],
                                 ),
                               ),
-                              SliverPostCommentSection(postId: post.id),
-                            ],
-                          ),
-                          SliverConstrainedCrossAxis(
-                            maxExtent: sideBarWidth,
-                            sliver: SliverToBoxAdapter(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(height: 56),
-                                  lowerBody(context),
-                                ],
-                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                }
-              },
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+                },
+              ),
             ),
           ),
         ),

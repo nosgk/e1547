@@ -9,18 +9,28 @@ class ContextDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Drawer(
+      // Unifies the interactive rows with the navigation drawer: rounded
+      // press feedback, one highlight color, one motion.
       child: ListTileTheme(
-        style: ListTileStyle.list,
+        data: ListTileThemeData(
+          style: ListTileStyle.list,
+          shape: const StadiumBorder(),
+          selectedTileColor: colorScheme.secondaryContainer,
+          selectedColor: colorScheme.onSecondaryContainer,
+        ),
         child: SafeArea(
           child: ListView(
             primary: false,
-            padding: EdgeInsets.only(bottom: defaultActionListPadding.bottom),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+            ).copyWith(bottom: defaultActionListPadding.bottom),
             children: [
               if (title != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
+                    horizontal: 12,
                     vertical: 18,
                   ),
                   child: DefaultTextStyle(

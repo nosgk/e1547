@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:e1547/translate/data/cache.dart';
 import 'package:e1547/translate/data/profile.dart';
 import 'package:e1547/translate/data/translate.dart';
 import 'package:flutter/foundation.dart';
@@ -78,11 +80,6 @@ class TranslationService {
 
   late final Dio _dio;
 
-  /// Session-scoped translation cache, keyed by provider|target|text.
-  final Map<String, String> _cache = {};
-
-  static const int _cacheLimit = 500;
-
   // --- performance & rate limiting -------------------------------------------
 
   int _maxConcurrency = kDefaultTranslateConcurrency;
@@ -90,6 +87,7 @@ class TranslationService {
   int _timeoutSeconds = kDefaultTranslateTimeoutSeconds;
   int _maxTextLength = kDefaultTranslateMaxTextLength;
   int _maxParagraphs = kDefaultTranslateMaxParagraphs;
+  int _retryCount = kDefaultTranslateRetryCount;
 
   int _inFlight = 0;
   final List<Completer<void>> _slotWaiters = [];
@@ -115,6 +113,11 @@ class TranslationService {
   /// Maximum newline-separated paragraphs per request; 0 = unlimited.
   int get maxParagraphs => _maxParagraphs;
   set maxParagraphs(int value) => _maxParagraphs = value < 0 ? 0 : value;
+
+  /// Automatic retries per failed chunk request (timeout, empty response,
+  /// server error, …); 0 = fail after the first attempt.
+  int get retryCount => _retryCount;
+  set retryCount(int value) => _retryCount = value < 0 ? 0 : value;
 
   Duration get _timeout => Duration(seconds: _timeoutSeconds);
 
@@ -168,20 +171,28 @@ class TranslationService {
       throw const TranslationException('nothing to translate');
     }
 
-    final cacheKey = '${config.provider.name}|${config.targetLanguage}|$text';
-    final cached = _cache[cacheKey];
+    final cache = TranslationCache.instance;
+    await cache.ready;
+    final cacheKey = _cacheKey(config, text);
+    final cached = cache.get(cacheKey);
     if (cached != null) {
       return (text: cached, providerLabel: _providerLabel(config));
     }
 
     final result = await _runProfile(text, config, null);
 
-    if (_cache.length >= _cacheLimit) {
-      _cache.remove(_cache.keys.first);
-    }
-    _cache[cacheKey] = result;
+    cache.put(cacheKey, result);
     return (text: result, providerLabel: _providerLabel(config));
   }
+
+  /// Cache key of one translation. The AI model is part of the key so
+  /// switching models does not serve results attributed to another model.
+  String _cacheKey(TranslationConfig config, String text) => [
+    config.provider.name,
+    if (config.provider == TranslationProvider.openai) config.model else '',
+    config.targetLanguage,
+    text,
+  ].join('|');
 
   /// Lists model ids from an OpenAI-compatible `/models` endpoint.
   Future<List<String>> fetchModels(TranslationConfig config) async {
@@ -221,12 +232,13 @@ class TranslationService {
 
   /// Runs one request exactly like [translate] would, but captures the
   /// rendered request, the raw response and the parse outcome instead of
-  /// throwing. Used by the request configurator's test panel.
+  /// throwing. Used by the request configurator's test panel. Diagnostics
+  /// want the raw failure, so this never retries.
   Future<TranslationProbe> probe(TranslationConfig config, String text) async {
     final log = _ProbeLog();
     final watch = Stopwatch()..start();
     try {
-      final parsed = await _runProfile(text, config, log);
+      final parsed = await _runProfile(text, config, log, retry: false);
       watch.stop();
       return TranslationProbe(
         status: log.status,
@@ -298,11 +310,15 @@ class TranslationService {
   /// Executes the provider profile: renders the request exactly as
   /// configured, performs it (chunked for long GET texts) and extracts the
   /// translation with the configured parse rule.
+  ///
+  /// Failed chunk requests retry up to the configured retry count unless
+  /// [retry] is false.
   Future<String> _runProfile(
     String text,
     TranslationConfig config,
-    _ProbeLog? log,
-  ) async {
+    _ProbeLog? log, {
+    bool retry = true,
+  }) async {
     _checkProviderKey(config);
     final profile = config.profile;
     final vars = _baseVars(config, text);
@@ -343,6 +359,39 @@ class TranslationService {
           log.requestHeaders = Map.of(headers);
           log.requestBody = body;
         }
+        parts.add(
+          await _requestChunk(url, body, headers, profile, log, retry: retry),
+        );
+      }
+    } on TranslationException {
+      rethrow;
+    } on DioException catch (error) {
+      throw _dioError(error);
+    } on FormatException catch (error) {
+      throw TranslationException(
+        'unexpected response format',
+        detail: error.message,
+      );
+    } on Object catch (error) {
+      throw TranslationException('$error');
+    }
+    return parts.join();
+  }
+
+  /// Performs one chunk request with the configured retry count. Timeouts,
+  /// empty responses and server errors retry; configuration errors
+  /// (missing/invalid API key) and cancellations do not. Each retry
+  /// re-acquires its concurrency slot and honors the request interval.
+  Future<String> _requestChunk(
+    String url,
+    String? body,
+    Map<String, String> headers,
+    TranslationRequestProfile profile,
+    _ProbeLog? log, {
+    required bool retry,
+  }) async {
+    for (var attempt = 0;; attempt++) {
+      try {
         await _acquireSlot();
         try {
           await _awaitInterval();
@@ -363,25 +412,35 @@ class TranslationService {
             log.responseHeaders = _rawResponseHeaders(response);
           }
           _validateStatus(response);
-          parts.add(_extractTranslation(response, profile));
+          return _extractTranslation(response, profile);
         } finally {
           _releaseSlot();
         }
+      } on DioException catch (error) {
+        final translated = _dioError(error);
+        if (!retry || attempt >= _retryCount || !_retryable(translated)) {
+          throw translated;
+        }
+        await _retryDelay(attempt);
+      } on TranslationException catch (error) {
+        if (!retry || attempt >= _retryCount || !_retryable(error)) rethrow;
+        await _retryDelay(attempt);
       }
-    } on TranslationException {
-      rethrow;
-    } on DioException catch (error) {
-      throw _dioError(error);
-    } on FormatException catch (error) {
-      throw TranslationException(
-        'unexpected response format',
-        detail: error.message,
-      );
-    } on Object catch (error) {
-      throw TranslationException('$error');
     }
-    return parts.join();
   }
+
+  /// Whether a failed attempt is worth retrying. Key and cancellation
+  /// errors are configuration problems, not transient failures.
+  bool _retryable(TranslationException error) =>
+      error.message != 'no API key configured' &&
+      error.message != 'invalid API key' &&
+      error.message != 'request cancelled';
+
+  /// Waits between retries; the delay grows per attempt (0.5 s, 1 s,
+  /// 1.5 s, …) and is capped at 3 s.
+  Future<void> _retryDelay(int attempt) => Future<void>.delayed(
+    Duration(milliseconds: min(500 * (attempt + 1), 3000)),
+  );
 
   /// Applies the parse rule to the response and returns the translation.
   String _extractTranslation(

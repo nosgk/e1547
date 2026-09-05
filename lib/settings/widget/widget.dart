@@ -3,6 +3,8 @@ export 'database.dart';
 export 'donations.dart';
 export 'grid.dart';
 export 'icon.dart';
+export 'media_cache.dart';
 export 'settings.dart';
+export 'slider_tile.dart';
 export 'text.dart';
 export 'translation.dart';

@@ -5,6 +5,8 @@
 /// because no two controllers should be attached to global singletons.
 library;
 
+import 'dart:async';
+
 import 'package:e1547/app/app.dart';
 import 'package:e1547/client/client.dart';
 import 'package:e1547/files/files.dart';
@@ -134,6 +136,30 @@ class FileCacheProvider
         create: (context, client, storage) =>
             createFileCache(dio: client.dio, database: storage.sqlite),
         dispose: (context, manager) => manager.dispose(),
+      );
+}
+
+/// Provides the size-based [MediaCacheManager] for the file cache. Must
+/// sit below [FileCacheProvider] and [SettingsProvider].
+class MediaCacheProvider
+    extends
+        SubChangeNotifierProvider2<
+          BaseCacheManager,
+          AppStorage,
+          MediaCacheManager
+        > {
+  MediaCacheProvider({super.child, super.builder})
+    : super(
+        create: (context, manager, storage) {
+          final mediaCache = MediaCacheManager(
+            manager: manager,
+            repository: FileCacheRepository(database: storage.sqlite),
+            limitMb: context.read<Settings>().mediaCacheLimitMb,
+          );
+          mediaCache.start();
+          unawaited(mediaCache.refresh());
+          return mediaCache;
+        },
       );
 }
 

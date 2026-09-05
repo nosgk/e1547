@@ -9,10 +9,10 @@ import 'package:e1547/topic/topic.dart';
 import 'package:e1547/traits/traits.dart';
 import 'package:flutter/material.dart';
 
-const String _drawerSearchGroup = 'search';
-const String _drawerFollowsGroup = 'follows';
-const String _drawerCollectionsGroup = 'collections';
-const String _drawerSettingsGroup = 'settings';
+const String _drawerSearchGroup = kDrawerSearchGroup;
+const String _drawerFollowsGroup = kDrawerFollowsGroup;
+const String _drawerCollectionsGroup = kDrawerCollectionsGroup;
+const String _drawerSettingsGroup = kDrawerSettingsGroup;
 
 final List<RouterDrawerDestination> rootDestintations = [
   NamedRouterDrawerDestination(

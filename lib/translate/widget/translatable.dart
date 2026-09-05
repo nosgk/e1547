@@ -20,6 +20,8 @@ TranslationConfig translationConfigFromSettings(
   service.requestTimeoutSeconds = settings.translateTimeoutSeconds.value;
   service.maxTextLength = settings.translateMaxTextLength.value;
   service.maxParagraphs = settings.translateMaxParagraphs.value;
+  service.retryCount = settings.translateRetryCount.value;
+  TranslationCache.instance.limit = settings.translateCacheLimit.value;
   final provider = settings.translateProvider.value;
   return TranslationConfig(
     provider: provider,
@@ -207,6 +209,25 @@ String localizedTranslationError(String error) {
     _ =>
       error.startsWith('server error') ? 'Translation server error'.tr : error,
   };
+}
+
+/// Name shown in "Translated by {name}" captions: the AI model for the
+/// OpenAI-compatible provider, a compact provider name otherwise.
+String translationProviderName(Settings settings) {
+  if (settings.translateProvider.value == TranslationProvider.openai) {
+    final model = settings.translateModel.value.trim();
+    return model.isEmpty ? kDefaultOpenAiModel : model;
+  }
+  return settings.translateProvider.value.shortLabel;
+}
+
+/// Human-readable size of the translation cache ("12.3 KB", "1.2 MB").
+String formatTranslationCacheSize(int bytes) {
+  if (bytes <= 0) return '0 KB';
+  if (bytes < 1024) return '<1 KB';
+  final kb = bytes / 1024;
+  if (kb < 1024) return '${kb.toStringAsFixed(kb < 10 ? 1 : 0)} KB';
+  return '${(kb / 1024).toStringAsFixed(1)} MB';
 }
 
 /// Creates a translation entry for [text], starting auto translation if the
@@ -655,9 +676,10 @@ class TranslationOriginal extends StatelessWidget {
   }
 }
 
-/// Scoped switch for tag translation (the gallery page toolbar toggle).
-/// Tag widgets inside the scope translate their names while [enabled] is
-/// true — independent of the global auto-translation setting.
+/// Scoped switch for tag translation (the gallery and post detail page
+/// toolbar toggles). Tag widgets inside the scope translate their names
+/// while [enabled] is true — independent of the global auto-translation
+/// setting.
 class TagTranslationScope extends InheritedWidget {
   const TagTranslationScope({
     super.key,
@@ -665,14 +687,83 @@ class TagTranslationScope extends InheritedWidget {
     required super.child,
   });
 
-  final ValueListenable<bool> enabled;
+  final ValueNotifier<bool> enabled;
 
   /// The scoped tag-translation switch, or null when outside any scope.
-  static ValueListenable<bool>? maybeOf(BuildContext context) => context
+  static ValueNotifier<bool>? maybeOf(BuildContext context) => context
       .dependOnInheritedWidgetOfExactType<TagTranslationScope>()
       ?.enabled;
 
   @override
   bool updateShouldNotify(TagTranslationScope oldWidget) =>
       !identical(oldWidget.enabled, enabled);
+}
+
+/// App-bar toggle for tag translation on the post detail page, placed next
+/// to the overflow menu. Reads the surrounding [TagTranslationScope] and
+/// renders nothing outside one. While active, a small "Translated by …"
+/// caption names the configured service (the AI model for AI translation).
+class TagTranslationToggle extends StatelessWidget {
+  const TagTranslationToggle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = TagTranslationScope.maybeOf(context);
+    final settings = trySettingsOf(context);
+    if (scope == null || settings == null) return const SizedBox.shrink();
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        scope,
+        settings.translateEnabled,
+        settings.translateProvider,
+        settings.translateModel,
+      ]),
+      builder: (context, child) {
+        final enabled = scope.value;
+        final button = IconButton(
+          tooltip: 'Translate tags'.tr,
+          icon: const Icon(Icons.sell_outlined),
+          onPressed: () {
+            if (!settings.translateEnabled.value) {
+              // Make the silent gate visible instead of flipping a switch
+              // that cannot do anything while translation is disabled.
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  duration: const Duration(seconds: 2),
+                  content: Text('Online translation is disabled'.tr),
+                ),
+              );
+              return;
+            }
+            scope.value = !enabled;
+          },
+        );
+        if (!enabled || !settings.translateEnabled.value) {
+          return Dimmed(child: button);
+        }
+        final caption = 'Translated by {provider}'.trArgs({
+          'provider': translationProviderName(settings),
+        });
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Text(
+                  caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: dimTextColor(context),
+                  ),
+                ),
+              ),
+            ),
+            button,
+          ],
+        );
+      },
+    );
+  }
 }

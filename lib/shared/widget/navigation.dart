@@ -14,6 +14,12 @@ class RouterDrawerDestination {
   final bool unique;
 }
 
+/// Names of the drawer destination groups, in display order.
+const String kDrawerSearchGroup = 'search';
+const String kDrawerFollowsGroup = 'follows';
+const String kDrawerCollectionsGroup = 'collections';
+const String kDrawerSettingsGroup = 'settings';
+
 typedef RouterDrawerSettingCallback = bool Function(BuildContext context);
 
 class NamedRouterDrawerDestination<T extends Widget>
@@ -79,6 +85,15 @@ class NavigationProvider
 class RouterDrawer extends StatelessWidget {
   const RouterDrawer({super.key});
 
+  /// Display labels of the drawer sections, keyed by the destination
+  /// group name.
+  static const Map<String, String> groupLabels = {
+    kDrawerSearchGroup: 'Browse',
+    kDrawerFollowsGroup: 'Follows',
+    kDrawerCollectionsGroup: 'Collections',
+    kDrawerSettingsGroup: 'Manage',
+  };
+
   List<NamedRouterDrawerDestination> getDrawerDestinations(
     List<RouterDrawerDestination> destinations,
   ) {
@@ -102,7 +117,7 @@ class RouterDrawer extends StatelessWidget {
       controller.destinations,
     );
 
-    String? currentGroup = destinations.first.group;
+    String? currentGroup;
 
     for (final destination in destinations) {
       if (!(destination.visible?.call(context) ?? true)) {
@@ -110,7 +125,11 @@ class RouterDrawer extends StatelessWidget {
       }
       if (destination.group != currentGroup) {
         currentGroup = destination.group;
-        children.add(const Divider());
+        final label = groupLabels[currentGroup];
+        if (children.isNotEmpty) children.add(const SizedBox(height: 6));
+        if (label != null) {
+          children.add(_DrawerGroupLabel(title: label.tr));
+        }
       }
       children.add(
         ListTile(
@@ -131,11 +150,46 @@ class RouterDrawer extends StatelessWidget {
         ),
       );
     }
+    children.add(const SizedBox(height: 8));
 
     return Drawer(
       child: PrimaryScrollController(
         controller: ScrollController(),
-        child: ListView(children: children),
+        child: SafeArea(
+          child: ListTileTheme(
+            data: ListTileThemeData(
+              shape: const StadiumBorder(),
+              selectedTileColor: Theme.of(
+                context,
+              ).colorScheme.secondaryContainer,
+              selectedColor: Theme.of(context).colorScheme.onSecondaryContainer,
+            ),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              children: children,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small dimmed label above a drawer section.
+class _DrawerGroupLabel extends StatelessWidget {
+  const _DrawerGroupLabel({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 18, top: 12, bottom: 4),
+      child: Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.labelMedium?.copyWith(color: dimTextColor(context)),
       ),
     );
   }

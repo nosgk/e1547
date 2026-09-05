@@ -9,8 +9,10 @@ class UserDrawerHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<Client>(
-      builder: (context, client, child) =>
-          const DrawerHeader(child: Center(child: CurrentIdentityTile())),
+      builder: (context, client, child) => const Padding(
+        padding: EdgeInsets.fromLTRB(10, 12, 10, 4),
+        child: Center(child: CurrentIdentityTile()),
+      ),
     );
   }
 }

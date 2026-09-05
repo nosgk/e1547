@@ -16,6 +16,17 @@ enum TranslationProvider {
     TranslationProvider.azure => 'Azure Translator',
     TranslationProvider.openai => 'AI Translation',
   };
+
+  /// Compact name for space-constrained captions ("Translated by …" next
+  /// to the tag translation toggle). For the OpenAI provider the model
+  /// name is used instead; see translationProviderName in the widget layer.
+  String get shortLabel => switch (this) {
+    TranslationProvider.google => 'Google',
+    TranslationProvider.googleChrome => 'Google',
+    TranslationProvider.microsoft => 'Microsoft',
+    TranslationProvider.azure => 'Azure',
+    TranslationProvider.openai => 'AI',
+  };
 }
 
 /// Common target languages for the translation feature.
@@ -66,6 +77,14 @@ const String kOpenAiBodyTemplate =
 const int kDefaultTranslateConcurrency = 1;
 const int kDefaultTranslateIntervalMs = 0;
 const int kDefaultTranslateTimeoutSeconds = 30;
+
+/// Automatic retries per failed request (timeout, empty response, server
+/// error, …); 0 = fail after the first attempt.
+const int kDefaultTranslateRetryCount = 2;
+
+/// Maximum number of entries in the persistent translation cache;
+/// 0 = unlimited.
+const int kDefaultTranslateCacheLimit = 500;
 
 /// Maximum characters sent in one request; 0 = unlimited. GET requests are
 /// additionally capped by the URL length limit.

@@ -100,9 +100,12 @@ class DenyListTagCard extends StatelessWidget {
 }
 
 /// Tag name text with its translation, when tag translation is active:
-/// either the surrounding [TagTranslationScope] toggle is on (gallery page
-/// toolbar) or the global tag auto-translate setting. Each tag is translated
-/// with a single request; failures fall back to the plain name.
+/// either the surrounding [TagTranslationScope] toggle is on (gallery and
+/// post detail page toolbars) or the global tag auto-translate setting.
+/// Each tag is translated with a single request. While loading a micro
+/// spinner shows next to the name (repeat requests are dropped); failures
+/// show the error message below the name and tapping it retries; success
+/// shows the translation below the original text.
 class TranslatedTagText extends StatelessWidget {
   const TranslatedTagText({super.key, required this.tag});
 
@@ -143,6 +146,57 @@ class TranslatedTagText extends StatelessWidget {
 
   Widget _content(BuildContext context, TranslationEntry entry) {
     final plain = _plain(context);
+    if (entry.status == TranslationStatus.loading) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(child: plain),
+          const SizedBox(width: 4),
+          const SizedBox(
+            width: 10,
+            height: 10,
+            child: CircularProgressIndicator(strokeWidth: 1.5),
+          ),
+        ],
+      );
+    }
+    if (entry.status == TranslationStatus.error) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          plain,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => translateEntry(context, entry),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 11,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 3),
+                  Flexible(
+                    child: Text(
+                      localizedTranslationError(entry.error ?? ''),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     final translation = entry.translation;
     final settings = trySettingsOf(context);
     if (entry.status != TranslationStatus.success ||

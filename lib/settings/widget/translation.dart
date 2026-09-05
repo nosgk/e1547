@@ -99,6 +99,38 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                 ),
               ),
             const Divider(),
+            AnimatedBuilder(
+              animation: TranslationCache.instance,
+              builder: (context, child) {
+                final cache = TranslationCache.instance;
+                return ListTile(
+                  title: Text('Translation cache'.tr),
+                  subtitle: Text(
+                    '{count} entries · {size}'.trArgs({
+                      'count': '${cache.count}',
+                      'size': formatTranslationCacheSize(cache.sizeBytes),
+                    }),
+                  ),
+                  leading: const Icon(Icons.storage_outlined),
+                  trailing: TextButton(
+                    onPressed: cache.count == 0
+                        ? null
+                        : () => _clearTranslationCache(context),
+                    child: Text('Clear translation cache'.tr),
+                  ),
+                );
+              },
+            ),
+            NumberSettingTile(
+              label: 'Cache entry limit'.tr,
+              subtitle: 'Maximum cached translations; 0 = unlimited'.tr,
+              value: context.read<Settings>().translateCacheLimit.value,
+              onChanged: (value) {
+                context.read<Settings>().translateCacheLimit.value = value;
+                TranslationCache.instance.limit = value;
+              },
+            ),
+            const Divider(),
             ValueListenableBuilder<TranslationProvider>(
               valueListenable: context.read<Settings>().translateProvider,
               builder: (context, provider, child) {
@@ -187,6 +219,37 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _clearTranslationCache(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Clear translation cache'.tr),
+        content: Text(
+          'Remove all cached translations? This cannot be undone.'.tr,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('CANCEL'.tr),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Clear'.tr),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await TranslationCache.instance.clear();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text('Cache cleared'.tr),
       ),
     );
   }
