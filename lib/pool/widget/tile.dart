@@ -5,7 +5,6 @@ import 'package:e1547/markup/markup.dart';
 import 'package:e1547/pool/pool.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/query/query.dart';
-import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:e1547/translate/translate.dart';
@@ -189,8 +188,13 @@ class _PoolTileTranslateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabledListenable = tryTranslationEnabledOf(context);
+    if (enabledListenable == null) {
+      // No Settings provider (tests, standalone hosts): hide the button.
+      return const SizedBox.shrink();
+    }
     return ValueListenableBuilder<bool>(
-      valueListenable: context.read<Settings>().translateEnabled,
+      valueListenable: enabledListenable,
       builder: (context, enabled, child) {
         if (!enabled) return const SizedBox.shrink();
         final entries = [title, if (description != null) description!];

@@ -4,6 +4,7 @@ import 'package:e1547/markup/markup.dart';
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/translate/translate.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Builds a [TranslationConfig] from the current settings values, falling
@@ -87,15 +88,28 @@ Map<String, String> availableTranslationLanguages(Settings settings) {
   };
 }
 
-/// Starts or re-runs the translation for [entry] using current settings.
+/// Reads the online-translation master switch, or `null` when no Settings
+/// provider is above this context (tests, standalone hosts). Call sites hide
+/// their translation UI in that case, matching pre-feature behavior.
+/// Returns the `translateEnabled` ValueListenable on success.
+ValueListenable<bool>? tryTranslationEnabledOf(BuildContext context) {
+  try {
+    return context.read<Settings>().translateEnabled;
+  } on Object {
+    return null;
+  }
+}
+
 void translateEntry(BuildContext context, TranslationEntry entry) {
-  final settings = context.read<Settings>();
-  if (!settings.translateEnabled.value) return;
+  final ValueListenable<bool>? enabledListenable = tryTranslationEnabledOf(
+    context,
+  );
+  if (enabledListenable == null || !enabledListenable.value) return;
   if (entry.translation != null) {
     entry.expand();
     return;
   }
-  entry.translate(translationConfigFromSettings(settings));
+  entry.translate(translationConfigFromSettings(context.read<Settings>()));
 }
 
 /// Maps internal translation errors to localized messages.
@@ -215,8 +229,13 @@ class TranslationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabledListenable = tryTranslationEnabledOf(context);
+    if (enabledListenable == null) {
+      // No Settings provider (tests, standalone hosts): hide the button.
+      return const SizedBox.shrink();
+    }
     return ValueListenableBuilder<bool>(
-      valueListenable: context.read<Settings>().translateEnabled,
+      valueListenable: enabledListenable,
       builder: (context, enabled, child) {
         if (!enabled) return const SizedBox.shrink();
         return AnimatedBuilder(
