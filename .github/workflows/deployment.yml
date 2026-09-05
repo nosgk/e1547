@@ -146,8 +146,25 @@ jobs:
           KEYCONFIG: ${{ secrets.KEYCONFIG }}
         run: |
           mkdir -p android/keys
-          echo "$KEYSTORE" | base64 -d > android/keys/key.pkcs
-          echo "$KEYCONFIG" | base64 -d > android/keys/key.properties
+          if [ -n "$KEYSTORE" ] && [ -n "$KEYCONFIG" ]; then
+            echo "$KEYSTORE" | base64 -d > android/keys/key.pkcs
+            echo "$KEYCONFIG" | base64 -d > android/keys/key.properties
+          else
+            echo "::warning::No signing secrets found. Generating a one-off self-signed release keystore. Install it over previous builds only after uninstalling them."
+            keytool -genkeypair \
+              -keystore android/keys/key.pkcs \
+              -storetype PKCS12 \
+              -alias release \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass e1547key -keypass e1547key \
+              -dname "CN=e1547, OU=e1547, O=e1547, C=US"
+            {
+              echo "storeFile=../keys/key.pkcs"
+              echo "storePassword=e1547key"
+              echo "keyAlias=release"
+              echo "keyPassword=e1547key"
+            } > android/keys/key.properties
+          fi
 
       - name: build APK
         run: |
