@@ -7,6 +7,7 @@ import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:e1547/traits/traits.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
 class PoolPage extends StatelessWidget {
@@ -19,59 +20,80 @@ class PoolPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final client = context.watch<Client>();
     final oldestFirst = orderByOldest ?? true;
-    return FilterControllerProvider(
-      create: (_) => PostFilter(client),
-      keys: (_) => [client],
-      child: ChangeNotifierProvider(
-        create: (_) => PostParamsController(
-          initial: PostParams(
-            tags: oldestFirst
-                ? 'pool:${pool.id} order:pool'
-                : 'pool:${pool.id} order:${PostOrder.newest.value}',
-          ),
-          canSearch: false,
-        ),
+    return TranslatableHost(
+      text: tagToName(pool.name),
+      builder: (context, translation) => FilterControllerProvider(
+        create: (_) => PostFilter(client),
+        keys: (_) => [client],
         child: ChangeNotifierProvider(
-          create: (_) => PostDisplayController(PostDisplayType.comic),
-          child: PoolHistoryConnector(
-            pool: pool,
-            child: FollowSeenConnector(
-              child: PostPageQueryBuilder(
-                builder: (context, state, query) => SelectionLayout<Post>(
-                  items: state.data?.pages.expand((p) => p).toList(),
-                  child: AdaptiveScaffold(
-                    appBar: PostSelectionAppBar(
-                      child: DefaultAppBar(
-                        title: Text(tagToName(pool.name)),
-                        actions: [
-                          IconButton(
-                            icon: const Icon(Icons.info_outline),
-                            tooltip: 'Info'.tr,
-                            onPressed: () =>
-                                showPoolPrompt(context: context, pool: pool),
+          create: (_) => PostParamsController(
+            initial: PostParams(
+              tags: oldestFirst
+                  ? 'pool:${pool.id} order:pool'
+                  : 'pool:${pool.id} order:${PostOrder.newest.value}',
+            ),
+            canSearch: false,
+          ),
+          child: ChangeNotifierProvider(
+            create: (_) => PostDisplayController(PostDisplayType.comic),
+            child: PoolHistoryConnector(
+              pool: pool,
+              child: FollowSeenConnector(
+                child: PostPageQueryBuilder(
+                  builder: (context, state, query) => SelectionLayout<Post>(
+                    items: state.data?.pages.expand((p) => p).toList(),
+                    child: AdaptiveScaffold(
+                      appBar: PostSelectionAppBar(
+                        child: DefaultAppBar(
+                          title: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tagToName(pool.name),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              TranslationDisplay(
+                                entry: translation,
+                                compact: true,
+                              ),
+                            ],
                           ),
-                          const ContextDrawerButton(),
+                          actions: [
+                            TranslationButton(
+                              entry: translation,
+                              compact: true,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.info_outline),
+                              tooltip: 'Info'.tr,
+                              onPressed: () =>
+                                  showPoolPrompt(context: context, pool: pool),
+                            ),
+                            const ContextDrawerButton(),
+                          ],
+                        ),
+                      ),
+                      endDrawer: ContextDrawer(
+                        title: Text('Pool'.tr),
+                        children: [
+                          const PoolReaderSwitch(),
+                          const PoolOrderSwitch(),
+                          const DrawerDenySwitch(),
+                          DrawerTagCounter(
+                            posts: state.data?.pages.expand((p) => p).toList(),
+                            error: state.error,
+                          ),
                         ],
                       ),
-                    ),
-                    endDrawer: ContextDrawer(
-                      title: Text('Pool'.tr),
-                      children: [
-                        const PoolReaderSwitch(),
-                        const PoolOrderSwitch(),
-                        const DrawerDenySwitch(),
-                        DrawerTagCounter(
-                          posts: state.data?.pages.expand((p) => p).toList(),
-                          error: state.error,
-                        ),
-                      ],
-                    ),
-                    body: LimitedWidthLayout(
-                      child: ListenableBuilder(
-                        listenable: context.watch<Settings>().tileSize,
-                        builder: (context, child) => TileLayout(
-                          tileSize: context.watch<Settings>().tileSize.value,
-                          child: const PostList(),
+                      body: LimitedWidthLayout(
+                        child: ListenableBuilder(
+                          listenable: context.watch<Settings>().tileSize,
+                          builder: (context, child) => TileLayout(
+                            tileSize: context.watch<Settings>().tileSize.value,
+                            child: const PostList(),
+                          ),
                         ),
                       ),
                     ),

@@ -257,14 +257,9 @@ class TranslationService {
   // OpenAI-compatible chat APIs
   // ---------------------------------------------------------------------------
 
-  static const String _openAiBodyTemplate =
-      '{"model":"@model","temperature":0.3,"messages":'
-      '[{"role":"system","content":"@systemPrompt"},'
-      '{"role":"user","content":"@userPrompt"}]}';
-
   Future<String> _translateOpenAi(String text, TranslationConfig config) async {
     final urlTemplate = _effectiveUrl(config, config.openaiChatUrl);
-    final bodyTemplate = _effectiveBody(config, _openAiBodyTemplate);
+    final bodyTemplate = _effectiveBody(config, kOpenAiBodyTemplate);
     final targetName =
         kTranslationLanguages[config.targetLanguage] ?? config.targetLanguage;
     final url = renderUrlTemplate(urlTemplate, {

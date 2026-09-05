@@ -48,6 +48,26 @@ const String kDefaultOpenAiBaseUrl = 'https://api.openai.com/v1';
 
 const String kDefaultOpenAiModel = 'gpt-4o-mini';
 
+/// Default request templates, shown pre-filled in the advanced settings and
+/// used whenever the matching override is empty.
+const String kGoogleUrlTemplate =
+    'https://translate.googleapis.com/translate_a/single'
+    '?client=gtx&sl=auto&tl=@toLang&dt=t&q=@text';
+const String kGoogleDefaultHeaders = '{}';
+const String kGoogleDefaultBody = '';
+
+const String kMicrosoftUrlTemplate =
+    'https://edge.microsoft.com/translate/translatetext?from=&to=@toLang';
+const String kMicrosoftDefaultHeaders = '{"Accept": "application/json"}';
+const String kMicrosoftDefaultBody = '["@text"]';
+
+const String kOpenAiBodyTemplate =
+    '{"model":"@model","temperature":0.3,"messages":'
+    '[{"role":"system","content":"@systemPrompt"},'
+    '{"role":"user","content":"@userPrompt"}]}';
+const String kOpenAiDefaultHeaders =
+    '{"Authorization": "Bearer @apiKey", "Accept": "application/json"}';
+
 /// Immutable snapshot of everything the translation service needs to run.
 class TranslationConfig {
   const TranslationConfig({

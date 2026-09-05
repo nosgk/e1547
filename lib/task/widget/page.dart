@@ -19,41 +19,43 @@ class TasksPage extends StatelessWidget {
                 t.status == TaskStatus.completed ||
                 t.status == TaskStatus.canceled,
           );
-          return _SuppressBubbleWhileMounted(
-            controller: controller,
-            child: SelectionLayout<Task>(
-              items: items,
-              child: AdaptiveScaffold(
-                appBar: SelectionAppBar<Task>(
-                  titleBuilder: (context, layoutData) => Text(
-                    '{count} selected'.trArgs({
-                      'count': layoutData.selections.length.toString(),
-                    }),
+          return RouterDrawerEntry<TasksPage>(
+            child: _SuppressBubbleWhileMounted(
+              controller: controller,
+              child: SelectionLayout<Task>(
+                items: items,
+                child: AdaptiveScaffold(
+                  appBar: SelectionAppBar<Task>(
+                    titleBuilder: (context, layoutData) => Text(
+                      '{count} selected'.trArgs({
+                        'count': layoutData.selections.length.toString(),
+                      }),
+                    ),
+                    actionBuilder: (context, layoutData) =>
+                        taskBulkActions(controller, layoutData),
+                    child: DefaultAppBar(
+                      title: Text('Tasks'.tr),
+                      actions: [
+                        if (hasActive)
+                          IconButton(
+                            tooltip: 'cancel all'.tr,
+                            icon: const Icon(Icons.block),
+                            onPressed: controller.cancelAll,
+                          ),
+                        if (hasDone)
+                          IconButton(
+                            tooltip: 'clear done'.tr,
+                            icon: const Icon(Icons.delete_sweep),
+                            onPressed: controller.clearDone,
+                          ),
+                      ],
+                    ),
                   ),
-                  actionBuilder: (context, layoutData) =>
-                      taskBulkActions(controller, layoutData),
-                  child: DefaultAppBar(
-                    title: Text('Tasks'.tr),
-                    actions: [
-                      if (hasActive)
-                        IconButton(
-                          tooltip: 'cancel all'.tr,
-                          icon: const Icon(Icons.block),
-                          onPressed: controller.cancelAll,
-                        ),
-                      if (hasDone)
-                        IconButton(
-                          tooltip: 'clear done'.tr,
-                          icon: const Icon(Icons.delete_sweep),
-                          onPressed: controller.clearDone,
-                        ),
-                    ],
+                  drawer: const RouterDrawer(),
+                  body: const CustomScrollView(
+                    primary: true,
+                    slivers: [SliverTasksList()],
                   ),
-                ),
-                drawer: const RouterDrawer(),
-                body: const CustomScrollView(
-                  primary: true,
-                  slivers: [SliverTasksList()],
                 ),
               ),
             ),

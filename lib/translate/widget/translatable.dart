@@ -1,20 +1,31 @@
+import 'dart:convert';
+
 import 'package:e1547/markup/markup.dart';
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
-/// Builds a [TranslationConfig] from the current settings values.
+/// Builds a [TranslationConfig] from the current settings values, falling
+/// back to defaults for empty optional fields.
 TranslationConfig translationConfigFromSettings(Settings settings) {
   final provider = settings.translateProvider.value;
   return TranslationConfig(
     provider: provider,
     targetLanguage: settings.translateTargetLanguage.value,
     apiKey: settings.translateApiKey.value,
-    baseUrl: settings.translateBaseUrl.value,
-    model: settings.translateModel.value,
-    systemPrompt: settings.translateSystemPrompt.value,
-    userPrompt: settings.translateUserPrompt.value,
+    baseUrl: settings.translateBaseUrl.value.trim().isEmpty
+        ? kDefaultOpenAiBaseUrl
+        : settings.translateBaseUrl.value,
+    model: settings.translateModel.value.trim().isEmpty
+        ? kDefaultOpenAiModel
+        : settings.translateModel.value,
+    systemPrompt: settings.translateSystemPrompt.value.trim().isEmpty
+        ? kDefaultTranslationSystemPrompt
+        : settings.translateSystemPrompt.value,
+    userPrompt: settings.translateUserPrompt.value.trim().isEmpty
+        ? kDefaultTranslationUserPrompt
+        : settings.translateUserPrompt.value,
     customUrl: switch (provider) {
       TranslationProvider.google => settings.translateGoogleUrl.value,
       TranslationProvider.microsoft => settings.translateMicrosoftUrl.value,
@@ -33,13 +44,58 @@ TranslationConfig translationConfigFromSettings(Settings settings) {
   );
 }
 
+/// Parses a stored custom language list ("[{"code":"xx","name":"YY"},...]").
+/// Malformed data yields an empty list.
+List<MapEntry<String, String>> parseCustomLanguages(String json) {
+  try {
+    final decoded = jsonDecode(json);
+    if (decoded is! List) return const [];
+    return [
+      for (final entry in decoded)
+        if (entry is Map &&
+            entry['code'] is String &&
+            (entry['code'] as String).trim().isNotEmpty)
+          MapEntry(
+            (entry['code'] as String).trim(),
+            entry['name'] is String &&
+                    (entry['name'] as String).trim().isNotEmpty
+                ? (entry['name'] as String).trim()
+                : (entry['code'] as String).trim(),
+          ),
+    ];
+  } on FormatException {
+    return const [];
+  }
+}
+
+/// Serializes custom languages for storage.
+String encodeCustomLanguages(List<MapEntry<String, String>> languages) {
+  return jsonEncode([
+    for (final language in languages)
+      {'code': language.key, 'name': language.value},
+  ]);
+}
+
+/// All languages selectable as translation targets: the built-in ones plus
+/// the user's custom additions.
+Map<String, String> availableTranslationLanguages(Settings settings) {
+  return {
+    ...kTranslationLanguages,
+    ...Map.fromEntries(
+      parseCustomLanguages(settings.translateCustomLanguages.value),
+    ),
+  };
+}
+
 /// Starts or re-runs the translation for [entry] using current settings.
 void translateEntry(BuildContext context, TranslationEntry entry) {
+  final settings = context.read<Settings>();
+  if (!settings.translateEnabled.value) return;
   if (entry.translation != null) {
     entry.expand();
     return;
   }
-  entry.translate(translationConfigFromSettings(context.read<Settings>()));
+  entry.translate(translationConfigFromSettings(settings));
 }
 
 /// Maps internal translation errors to localized messages.
@@ -58,6 +114,32 @@ String localizedTranslationError(String error) {
     _ =>
       error.startsWith('server error') ? 'Translation server error'.tr : error,
   };
+}
+
+/// Creates a translation entry for [text], starting auto translation if the
+/// settings ask for it. For custom multi-entry layouts; prefer
+/// [TranslatableHost] for the common single-text case.
+TranslationEntry createTranslationEntry(BuildContext context, String text) {
+  final entry = TranslationEntry(text: text);
+  _maybeAutoTranslateEntry(context, entry);
+  return entry;
+}
+
+void _maybeAutoTranslateEntry(BuildContext context, TranslationEntry entry) {
+  if (entry.autoAttempted) return;
+  try {
+    final settings = context.read<Settings>();
+    if (!settings.translateEnabled.value) return;
+    if (!settings.translateAuto.value) return;
+    if (settings.translateTargetLanguage.value.startsWith('zh') &&
+        translationLooksChinese(entry.text)) {
+      entry.skipAuto();
+      return;
+    }
+    entry.translate(translationConfigFromSettings(settings));
+  } on Object {
+    // Settings are not available in tests; auto translation is best-effort.
+  }
 }
 
 /// Owns the [TranslationEntry] for [text] and hands it to [builder].
@@ -81,53 +163,36 @@ class TranslatableHost extends StatefulWidget {
 }
 
 class _TranslatableHostState extends State<TranslatableHost> {
-  late TranslationEntry entry;
+  TranslationEntry? _entry;
+
+  TranslationEntry _create() => createTranslationEntry(context, widget.text);
 
   @override
-  void initState() {
-    super.initState();
-    entry = TranslationEntry(text: widget.text);
-    _maybeAutoTranslate();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _entry ??= _create();
   }
 
   @override
   void didUpdateWidget(covariant TranslatableHost oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.text != widget.text) {
-      entry.dispose();
-      entry = TranslationEntry(text: widget.text);
-      _maybeAutoTranslate();
+      _entry?.dispose();
+      _entry = _create();
     }
   }
 
   @override
   void dispose() {
-    entry.dispose();
+    _entry?.dispose();
     super.dispose();
-  }
-
-  void _maybeAutoTranslate() {
-    try {
-      final settings = context.read<Settings>();
-      if (!settings.translateEnabled.value) return;
-      if (!settings.translateAuto.value) return;
-      if (entry.autoAttempted) return;
-      if (settings.translateTargetLanguage.value.startsWith('zh') &&
-          translationLooksChinese(entry.text)) {
-        entry.skipAuto();
-        return;
-      }
-      entry.translate(translationConfigFromSettings(settings));
-    } on Object {
-      // Settings are not available in tests; auto translation is optional.
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: entry,
-      builder: (context, child) => widget.builder(context, entry),
+      animation: _entry!,
+      builder: (context, child) => widget.builder(context, _entry!),
     );
   }
 }
@@ -136,9 +201,116 @@ class _TranslatableHostState extends State<TranslatableHost> {
 ///
 /// [compact] renders a small icon button that fits into action rows (e.g.
 /// next to comment votes); the default renders a small text button suited
-/// for the end of a description card.
+/// for the end of a description card. Hidden entirely while the translation
+/// feature is switched off.
 class TranslationButton extends StatelessWidget {
   const TranslationButton({
+    super.key,
+    required this.entry,
+    this.compact = false,
+  });
+
+  final TranslationEntry entry;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: context.read<Settings>().translateEnabled,
+      builder: (context, enabled, child) {
+        if (!enabled) return const SizedBox.shrink();
+        return AnimatedBuilder(
+          animation: entry,
+          builder: (context, child) {
+            final loaded =
+                entry.status == TranslationStatus.success &&
+                entry.translation != null;
+            if (loaded && entry.expanded && !compact) {
+              // The full display carries its own collapse control.
+              return const SizedBox.shrink();
+            }
+            if (entry.status == TranslationStatus.loading) {
+              if (compact) {
+                return const SizedBox(
+                  width: 32,
+                  height: 24,
+                  child: Center(
+                    child: SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+              return TextButton.icon(
+                onPressed: null,
+                icon: const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                label: const Text(''),
+              );
+            }
+            final failed = entry.status == TranslationStatus.error;
+            if (compact) {
+              return Dimmed(
+                child: IconButton(
+                  tooltip: failed
+                      ? 'Retry'.tr
+                      : loaded
+                      ? (entry.expanded
+                            ? 'Collapse translation'.tr
+                            : 'Show translation'.tr)
+                      : 'Translate'.tr,
+                  icon: Icon(
+                    loaded
+                        ? (entry.expanded
+                              ? Icons.keyboard_arrow_up
+                              : Icons.translate)
+                        : (failed ? Icons.refresh : Icons.translate),
+                    size: 16,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    if (loaded) {
+                      entry.expanded ? entry.collapse() : entry.expand();
+                    } else {
+                      translateEntry(context, entry);
+                    }
+                  },
+                ),
+              );
+            }
+            final label = (loaded ? 'Show translation' : 'Translate').tr;
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onPressed: () => translateEntry(context, entry),
+                icon: Icon(failed ? Icons.refresh : Icons.translate, size: 16),
+                label: Text(failed ? 'Retry'.tr : label),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Shows the translated text below the original, with an attribution
+/// caption and a collapse control. Renders nothing while idle or loading.
+///
+/// [compact] drops the caption and collapse row down to the dimmed text
+/// alone, for dense layouts like tiles and app bars; pair it with a compact
+/// [TranslationButton], which toggles the expansion.
+class TranslationDisplay extends StatelessWidget {
+  const TranslationDisplay({
     super.key,
     required this.entry,
     this.compact = false,
@@ -152,140 +324,93 @@ class TranslationButton extends StatelessWidget {
     return AnimatedBuilder(
       animation: entry,
       builder: (context, child) {
-        if (entry.status == TranslationStatus.success && entry.expanded) {
-          // The translation display carries its own collapse control.
-          return const SizedBox.shrink();
-        }
-        if (entry.status == TranslationStatus.loading) {
-          if (compact) {
-            return const SizedBox(
-              width: 32,
-              height: 24,
-              child: Center(
-                child: SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            );
-          }
-          return TextButton.icon(
-            onPressed: null,
-            icon: const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            label: const Text(''),
-          );
-        }
-        final failed = entry.status == TranslationStatus.error;
-        final label =
-            (entry.translation != null ? 'Show translation' : 'Translate').tr;
-        if (compact) {
-          return Dimmed(
-            child: IconButton(
-              tooltip: failed ? 'Retry'.tr : label,
-              icon: Icon(failed ? Icons.refresh : Icons.translate, size: 16),
-              visualDensity: VisualDensity.compact,
-              onPressed: () => translateEntry(context, entry),
-            ),
-          );
-        }
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            style: TextButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            onPressed: () => translateEntry(context, entry),
-            icon: Icon(failed ? Icons.refresh : Icons.translate, size: 16),
-            label: Text(failed ? 'Retry'.tr : label),
-          ),
+        return AnimatedSize(
+          duration: defaultAnimationDuration,
+          curve: Curves.easeInOutCubic,
+          alignment: Alignment.topCenter,
+          child: switch (entry.status) {
+            TranslationStatus.error => _error(context),
+            TranslationStatus.success when entry.expanded => _content(context),
+            _ => const SizedBox(width: double.infinity),
+          },
         );
       },
     );
   }
-}
 
-/// Shows the translated text below the original, with an attribution
-/// caption and a collapse control. Renders nothing while idle or loading.
-class TranslationDisplay extends StatelessWidget {
-  const TranslationDisplay({super.key, required this.entry});
-
-  final TranslationEntry entry;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: entry,
-      builder: (context, child) {
-        if (entry.status == TranslationStatus.error) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    localizedTranslationError(entry.error ?? ''),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-                TranslationButton(entry: entry, compact: true),
-              ],
-            ),
-          );
-        }
-        if (entry.status != TranslationStatus.success || !entry.expanded) {
-          return const SizedBox.shrink();
-        }
-        return Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              DText(
-                entry.translation!,
-                style: TextStyle(color: dimTextColor(context, 0.8)),
+  Widget _error(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 14,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              localizedTranslationError(entry.error ?? ''),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.error,
               ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Translated by {provider}'.trArgs({
-                        'provider': entry.providerLabel ?? '',
-                      }),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: dimTextColor(context),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: entry.collapse,
-                    child: Text(
-                      'Collapse translation'.tr,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: dimTextColor(context),
-                      ),
-                    ),
-                  ),
-                ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content(BuildContext context) {
+    final translation = entry.translation!;
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: DText(
+          translation,
+          style: TextStyle(
+            color: dimTextColor(context, 0.8),
+            fontSize: Theme.of(context).textTheme.bodySmall?.fontSize,
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DText(
+            translation,
+            style: TextStyle(color: dimTextColor(context, 0.8)),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Translated by {provider}'.trArgs({
+                    'provider': entry.providerLabel ?? '',
+                  }),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+                ),
+              ),
+              GestureDetector(
+                onTap: entry.collapse,
+                child: Text(
+                  'Collapse translation'.tr,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+                ),
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

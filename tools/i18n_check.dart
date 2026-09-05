@@ -48,31 +48,46 @@ String unescape(String s) {
         case '0':
           sb.write('\x00'); // \0 not valid alone in Dart but harmless here
         case 'x' || 'u' || 'U':
-          // unicode escape: \xHH \uXXXX \u{...} \UXXXXXX
-          if (n == 'x') {
-            final hex = body.substring(i + 1, i + 3);
-            sb.write(String.fromCharCode(int.parse(hex, radix: 16)));
-            i += 2;
-          } else {
+          // Unicode escapes: \xHH \uXXXX \u{...} \UXXXXXXXX. Malformed
+          // sequences (too short, unterminated braces, non-hex digits,
+          // out-of-range values) are preserved verbatim so that a bad source
+          // string never crashes the extraction and its key still matches
+          // the original text.
+          final len = switch (n) {
+            'x' => 2,
+            'u' => 4,
+            _ => 8,
+          };
+          var j = i + 1;
+          String? decoded;
+          if (n != 'x' && j < body.length && body[j] == '{') {
             final hexBuf = StringBuffer();
-            var j = i + 1;
-            if (j < body.length && body[j] == '{') {
-              j++;
-              while (j < body.length && body[j] != '}') {
-                hexBuf.write(body[j++]);
-              }
-              j++; // skip }
-            } else {
-              final len = n == 'u' ? 4 : 8;
-              for (var k = 0; k < len; k++) {
-                hexBuf.write(body[j + k]);
-              }
-              j += len;
+            j++;
+            while (j < body.length && body[j] != '}') {
+              hexBuf.write(body[j++]);
             }
-            sb.write(
-              String.fromCharCode(int.parse(hexBuf.toString(), radix: 16)),
+            if (j < body.length) {
+              final value = int.tryParse(hexBuf.toString(), radix: 16);
+              if (value != null && value >= 0 && value <= 0x10FFFF) {
+                decoded = String.fromCharCode(value);
+                i = j; // consumed through the closing brace
+              }
+            }
+          } else if (i + len < body.length) {
+            final value = int.tryParse(
+              body.substring(i + 1, i + 1 + len),
+              radix: 16,
             );
-            i = j - 1;
+            if (value != null && value >= 0 && value <= 0x10FFFF) {
+              decoded = String.fromCharCode(value);
+              i += len; // consumed through the last hex digit
+            }
+          }
+          if (decoded != null) {
+            sb.write(decoded);
+          } else {
+            sb.write(r'\');
+            sb.write(n);
           }
         default:
           sb.write(n); // \' \" \\ \$

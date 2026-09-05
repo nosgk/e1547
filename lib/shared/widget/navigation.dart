@@ -51,9 +51,8 @@ class RouterDrawerController extends ChangeNotifier {
   String? get drawerSelection => _drawerSelection;
 
   void setDrawerSelection<T extends Widget>() {
-    NamedRouterDrawerDestination? target = destinations
-        .whereType<NamedRouterDrawerDestination<T>>()
-        .firstWhereOrNull((e) => e.unique);
+    final targets = destinations.whereType<NamedRouterDrawerDestination<T>>();
+    NamedRouterDrawerDestination? target = targets.firstOrNull;
     if (target != null && _drawerSelection != target.path) {
       _drawerSelection = target.path;
       WidgetsBinding.instance.addPostFrameCallback((_) => notifyListeners());
@@ -146,7 +145,9 @@ mixin RouterDrawerEntryWidget<T extends StatefulWidget> on State<T> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (ModalRoute.of(context)!.isFirst) {
+    // isCurrent (not isFirst): pages of non-unique destinations are pushed
+    // on top of the stack and must still light up their drawer entry.
+    if (ModalRoute.of(context)!.isCurrent) {
       context.watch<RouterDrawerController?>()?.setDrawerSelection<T>();
     }
   }

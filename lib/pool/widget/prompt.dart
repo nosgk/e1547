@@ -4,6 +4,7 @@ import 'package:e1547/pool/pool.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
 Future<void> showPoolPrompt({
@@ -19,10 +20,21 @@ Future<void> showPoolPrompt({
       alignment: MainAxisAlignment.spaceBetween,
       overflowSpacing: 8,
       children: [
-        Text(
-          tagToName(pool.name),
-          style: Theme.of(context).textTheme.titleLarge,
-          softWrap: true,
+        TranslatableHost(
+          text: tagToName(pool.name),
+          builder: (context, translation) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                tagToName(pool.name),
+                style: Theme.of(context).textTheme.titleLarge,
+                softWrap: true,
+              ),
+              TranslationDisplay(entry: translation, compact: true),
+              TranslationButton(entry: translation, compact: true),
+            ],
+          ),
         ),
         PoolActions(pool: pool),
       ],
@@ -36,7 +48,18 @@ Future<void> showPoolPrompt({
       Padding(
         padding: const EdgeInsets.all(16),
         child: pool.description.isNotEmpty
-            ? DText(pool.description)
+            ? TranslatableHost(
+                text: pool.description,
+                builder: (context, translation) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DText(pool.description),
+                    TranslationDisplay(entry: translation),
+                    TranslationButton(entry: translation),
+                  ],
+                ),
+              )
             : Text(
                 'no description'.tr,
                 style: const TextStyle(fontStyle: FontStyle.italic),

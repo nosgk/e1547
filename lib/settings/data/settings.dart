@@ -122,6 +122,12 @@ class Settings extends NotifiedSettings {
     initialValue: 'zh-CN',
   );
 
+  /// Custom target languages, stored as JSON ("[{"code":"xx","name":"YY"}]").
+  late final ValueNotifier<String> translateCustomLanguages = createSetting(
+    key: 'translateCustomLanguages',
+    initialValue: '[]',
+  );
+
   late final ValueNotifier<TranslationProvider> translateProvider =
       createEnumSetting(
         key: 'translateProvider',

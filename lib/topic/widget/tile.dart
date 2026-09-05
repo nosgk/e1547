@@ -1,5 +1,6 @@
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/topic/topic.dart';
+import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 import 'package:relative_time/relative_time.dart';
 
@@ -32,43 +33,49 @@ class TopicTile extends StatelessWidget {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          topic.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Dimmed(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text.rich(
-                                TextSpan(
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                  children: [
-                                    TextSpan(text: topic.creator),
-                                    TextSpan(
-                                      text: ' • ',
-                                      style: TextStyle(
-                                        color: dimTextColor(context),
-                                      ),
-                                    ),
-                                    TextSpan(
-                                      text: topic.createdAt.relativeTime(
-                                        context,
-                                      ),
-                                      style: TextStyle(
-                                        color: dimTextColor(context),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                    child: TranslatableHost(
+                      text: topic.title,
+                      builder: (context, translation) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            topic.title,
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                        ),
-                      ],
+                          TranslationDisplay(entry: translation, compact: true),
+                          Dimmed(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text.rich(
+                                  TextSpan(
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                    children: [
+                                      TextSpan(text: topic.creator),
+                                      TextSpan(
+                                        text: ' • ',
+                                        style: TextStyle(
+                                          color: dimTextColor(context),
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: topic.createdAt.relativeTime(
+                                          context,
+                                        ),
+                                        style: TextStyle(
+                                          color: dimTextColor(context),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

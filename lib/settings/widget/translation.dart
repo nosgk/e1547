@@ -82,7 +82,12 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
               valueListenable: context.read<Settings>().translateTargetLanguage,
               builder: (context, value, child) => ListTile(
                 title: Text('Target language'.tr),
-                subtitle: Text(kTranslationLanguages[value] ?? value),
+                subtitle: Text(
+                  availableTranslationLanguages(
+                        context.read<Settings>(),
+                      )[value] ??
+                      value,
+                ),
                 leading: const Icon(Icons.translate),
                 onTap: () => _pickLanguage(context, value),
               ),
@@ -99,43 +104,74 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
             const Divider(),
             ValueListenableBuilder<TranslationProvider>(
               valueListenable: context.read<Settings>().translateProvider,
-              builder: (context, provider, child) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (provider == TranslationProvider.openai) ...[
+              builder: (context, provider, child) {
+                final settings = context.read<Settings>();
+                final advancedDefaults = switch (provider) {
+                  TranslationProvider.google => (
+                    url: kGoogleUrlTemplate,
+                    headers: kGoogleDefaultHeaders,
+                    body: kGoogleDefaultBody,
+                  ),
+                  TranslationProvider.microsoft => (
+                    url: kMicrosoftUrlTemplate,
+                    headers: kMicrosoftDefaultHeaders,
+                    body: kMicrosoftDefaultBody,
+                  ),
+                  TranslationProvider.openai => (
+                    url: translationConfigFromSettings(settings).openaiChatUrl,
+                    headers: kOpenAiDefaultHeaders,
+                    body: kOpenAiBodyTemplate,
+                  ),
+                };
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (provider == TranslationProvider.openai) ...[
+                      SectionHeader(
+                        indent: SectionHeader.listTileIndent,
+                        title: 'AI Configuration'.tr,
+                      ),
+                      _SettingTextField(
+                        setting: settings.translateApiKey,
+                        label: 'API key'.tr,
+                        hintText: 'sk-…',
+                      ),
+                      _SettingTextField(
+                        setting: settings.translateBaseUrl,
+                        label: 'Base URL'.tr,
+                        defaultValue: kDefaultOpenAiBaseUrl,
+                      ),
+                      const _ModelSettingTile(),
+                      _SettingTextField(
+                        setting: settings.translateSystemPrompt,
+                        label: 'System prompt'.tr,
+                        defaultValue: kDefaultTranslationSystemPrompt,
+                        minLines: 2,
+                        maxLines: 4,
+                      ),
+                      _SettingTextField(
+                        setting: settings.translateUserPrompt,
+                        label: 'User prompt'.tr,
+                        defaultValue: kDefaultTranslationUserPrompt,
+                        minLines: 4,
+                        maxLines: 8,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          'Available variables: @toLang, @text'.tr,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: dimTextColor(context)),
+                        ),
+                      ),
+                      const Divider(),
+                    ],
                     SectionHeader(
                       indent: SectionHeader.listTileIndent,
-                      title: 'AI Configuration'.tr,
-                    ),
-                    _SettingTextField(
-                      setting: context.read<Settings>().translateApiKey,
-                      labelText: 'API key'.tr,
-                      hintText: 'sk-…',
-                    ),
-                    _SettingTextField(
-                      setting: context.read<Settings>().translateBaseUrl,
-                      labelText: 'Base URL'.tr,
-                      hintText: kDefaultOpenAiBaseUrl,
-                    ),
-                    const _ModelSettingTile(),
-                    _SettingTextField(
-                      setting: context.read<Settings>().translateSystemPrompt,
-                      labelText: 'System prompt'.tr,
-                      minLines: 2,
-                      maxLines: 4,
-                      onRestore: () =>
-                          context.read<Settings>().translateSystemPrompt.value =
-                              kDefaultTranslationSystemPrompt,
-                    ),
-                    _SettingTextField(
-                      setting: context.read<Settings>().translateUserPrompt,
-                      labelText: 'User prompt'.tr,
-                      hintText: '@toLang, @text',
-                      minLines: 4,
-                      maxLines: 8,
-                      onRestore: () =>
-                          context.read<Settings>().translateUserPrompt.value =
-                              kDefaultTranslationUserPrompt,
+                      title: 'Advanced customization'.tr,
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -143,34 +179,57 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
                         vertical: 4,
                       ),
                       child: Text(
-                        'Available variables: @toLang, @text'.tr,
+                        'Applies to the current service'.tr,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: dimTextColor(context),
                         ),
                       ),
                     ),
+                    _SettingTextField(
+                      setting: switch (provider) {
+                        TranslationProvider.google =>
+                          settings.translateGoogleUrl,
+                        TranslationProvider.microsoft =>
+                          settings.translateMicrosoftUrl,
+                        TranslationProvider.openai =>
+                          settings.translateOpenaiUrl,
+                      },
+                      label: 'Custom URL'.tr,
+                      defaultValue: advancedDefaults.url,
+                      maxLines: 3,
+                    ),
+                    _SettingTextField(
+                      setting: switch (provider) {
+                        TranslationProvider.google =>
+                          settings.translateGoogleHeaders,
+                        TranslationProvider.microsoft =>
+                          settings.translateMicrosoftHeaders,
+                        TranslationProvider.openai =>
+                          settings.translateOpenaiHeaders,
+                      },
+                      label: 'Custom headers'.tr,
+                      defaultValue: advancedDefaults.headers,
+                      minLines: 2,
+                      maxLines: 4,
+                    ),
+                    _SettingTextField(
+                      setting: switch (provider) {
+                        TranslationProvider.google =>
+                          settings.translateGoogleBody,
+                        TranslationProvider.microsoft =>
+                          settings.translateMicrosoftBody,
+                        TranslationProvider.openai =>
+                          settings.translateOpenaiBody,
+                      },
+                      label: 'Custom body'.tr,
+                      defaultValue: advancedDefaults.body,
+                      minLines: 2,
+                      maxLines: 6,
+                    ),
                     const Divider(),
                   ],
-                  SectionHeader(
-                    indent: SectionHeader.listTileIndent,
-                    title: 'Advanced customization'.tr,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Text(
-                      'Applies to the current service'.tr,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: dimTextColor(context),
-                      ),
-                    ),
-                  ),
-                  _AdvancedSettingTiles(provider: provider),
-                  const Divider(),
-                ],
-              ),
+                );
+              },
             ),
             SectionHeader(
               indent: SectionHeader.listTileIndent,
@@ -205,24 +264,131 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
 
   Future<void> _pickLanguage(BuildContext context, String current) async {
     final settings = context.read<Settings>();
+    final languages = availableTranslationLanguages(settings);
+    final custom = parseCustomLanguages(
+      settings.translateCustomLanguages.value,
+    );
     await showDialog(
       context: context,
       builder: (context) => SimpleDialog(
         title: Text('Target language'.tr),
         children: [
-          for (final entry in kTranslationLanguages.entries)
+          for (final entry in languages.entries)
+            if (!custom.any((c) => c.key == entry.key))
+              ListTile(
+                title: Text(entry.value),
+                subtitle: Text(entry.key),
+                trailing: entry.key == current ? const Icon(Icons.check) : null,
+                onTap: () {
+                  settings.translateTargetLanguage.value = entry.key;
+                  Navigator.of(context).maybePop();
+                },
+              ),
+          for (final entry in custom)
             ListTile(
               title: Text(entry.value),
               subtitle: Text(entry.key),
-              trailing: entry.key == current ? const Icon(Icons.check) : null,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (entry.key == current) const Icon(Icons.check),
+                  IconButton(
+                    tooltip: 'Delete'.tr,
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    onPressed: () {
+                      final remaining = custom
+                          .where((c) => c.key != entry.key)
+                          .toList();
+                      settings.translateCustomLanguages.value =
+                          encodeCustomLanguages(remaining);
+                      if (settings.translateTargetLanguage.value == entry.key) {
+                        settings.translateTargetLanguage.value = 'zh-CN';
+                      }
+                    },
+                  ),
+                ],
+              ),
               onTap: () {
                 settings.translateTargetLanguage.value = entry.key;
                 Navigator.of(context).maybePop();
               },
             ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.add),
+            title: Text('Add custom language'.tr),
+            onTap: () {
+              Navigator.of(context).maybePop();
+              _addCustomLanguage(context);
+            },
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _addCustomLanguage(BuildContext context) async {
+    final settings = context.read<Settings>();
+    final codeController = TextEditingController();
+    final nameController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add custom language'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: codeController,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Language code'.tr,
+                hintText: 'pt-BR',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Display name'.tr,
+                hintText: 'Português (Brasil)',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: Text('CANCEL'.tr),
+          ),
+          TextButton(
+            onPressed: () {
+              final code = codeController.text.trim();
+              if (code.isEmpty) return;
+              final name = nameController.text.trim();
+              final custom = parseCustomLanguages(
+                settings.translateCustomLanguages.value,
+              );
+              if (custom.any((c) => c.key == code)) {
+                Navigator.of(context).maybePop();
+                return;
+              }
+              custom.add(MapEntry(code, name.isEmpty ? code : name));
+              settings.translateCustomLanguages.value = encodeCustomLanguages(
+                custom,
+              );
+              settings.translateTargetLanguage.value = code;
+              Navigator.of(context).maybePop();
+            },
+            child: Text('Add'.tr),
+          ),
+        ],
+      ),
+    );
+    codeController.dispose();
+    nameController.dispose();
   }
 
   Future<void> _pickProvider(
@@ -250,89 +416,110 @@ class _TranslationSettingsPageState extends State<TranslationSettingsPage> {
   }
 }
 
-/// A text field bound to a persisted string setting.
+/// A titled text field bound to a persisted string setting.
+///
+/// The label renders as a small heading above the field. While the setting
+/// is empty, [defaultValue] is shown pre-filled; editing stores the typed
+/// text, and the restore button returns to the default.
 class _SettingTextField extends StatefulWidget {
   const _SettingTextField({
     required this.setting,
-    required this.labelText,
+    required this.label,
+    this.defaultValue,
     this.hintText,
     this.minLines = 1,
     this.maxLines = 1,
-    this.onRestore,
   });
 
   final ValueNotifier<String> setting;
-  final String labelText;
+  final String label;
+  final String? defaultValue;
   final String? hintText;
   final int minLines;
   final int maxLines;
-  final VoidCallback? onRestore;
 
   @override
   State<_SettingTextField> createState() => _SettingTextFieldState();
 }
 
 class _SettingTextFieldState extends State<_SettingTextField> {
-  late final TextEditingController controller = TextEditingController(
-    text: widget.setting.value,
-  );
+  late final TextEditingController controller;
   final FocusNode focusNode = FocusNode();
-  bool focused = false;
+  bool syncing = false;
+
+  String _effective(String value) =>
+      value.trim().isEmpty ? (widget.defaultValue ?? '') : value;
 
   @override
   void initState() {
     super.initState();
-    controller.addListener(_onChanged);
-    focusNode.addListener(_onFocusChanged);
+    controller = TextEditingController(text: _effective(widget.setting.value));
+    widget.setting.addListener(_onSettingChanged);
+    controller.addListener(_onControllerChanged);
   }
 
   @override
   void dispose() {
+    widget.setting.removeListener(_onSettingChanged);
+    controller.removeListener(_onControllerChanged);
     controller.dispose();
     focusNode.dispose();
     super.dispose();
   }
 
-  void _onChanged() {
-    if (controller.text != widget.setting.value) {
-      widget.setting.value = controller.text;
-    }
+  void _onControllerChanged() {
+    if (syncing) return;
+    syncing = true;
+    widget.setting.value = controller.text;
+    syncing = false;
   }
 
-  void _onFocusChanged() {
-    focused = focusNode.hasFocus;
-  }
-
-  @override
-  void didUpdateWidget(covariant _SettingTextField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Sync external changes (e.g. "restore defaults") while not editing.
-    if (!focused && widget.setting.value != controller.text) {
-      controller.text = widget.setting.value;
+  void _onSettingChanged() {
+    if (syncing) return;
+    final target = _effective(widget.setting.value);
+    if (target != controller.text) {
+      syncing = true;
+      controller.text = target;
+      syncing = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final canRestore =
+        widget.defaultValue != null && widget.setting.value.trim().isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        minLines: widget.minLines,
-        maxLines: widget.maxLines,
-        decoration: InputDecoration(
-          labelText: widget.labelText,
-          hintText: widget.hintText,
-          border: const OutlineInputBorder(),
-          suffixIcon: widget.onRestore != null
-              ? IconButton(
-                  tooltip: 'Restore defaults'.tr,
-                  icon: const Icon(Icons.restore, size: 20),
-                  onPressed: widget.onRestore,
-                )
-              : null,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6, left: 4),
+            child: Text(
+              widget.label,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          TextField(
+            controller: controller,
+            focusNode: focusNode,
+            minLines: widget.minLines,
+            maxLines: widget.maxLines,
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              border: const OutlineInputBorder(),
+              suffixIcon: canRestore
+                  ? IconButton(
+                      tooltip: 'Restore defaults'.tr,
+                      icon: const Icon(Icons.restore, size: 20),
+                      onPressed: () => widget.setting.value = '',
+                    )
+                  : null,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -349,7 +536,7 @@ class _ModelSettingTile extends StatelessWidget {
       valueListenable: settings.translateModel,
       builder: (context, value, child) => ListTile(
         title: Text('Model'.tr),
-        subtitle: Text(value),
+        subtitle: Text(value.trim().isEmpty ? kDefaultOpenAiModel : value),
         leading: const Icon(Icons.smart_toy_outlined),
         trailing: IconButton(
           tooltip: 'Fetch models'.tr,
@@ -399,61 +586,6 @@ class _ModelSettingTile extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-/// Advanced per-provider URL/header/body overrides with restore buttons.
-class _AdvancedSettingTiles extends StatelessWidget {
-  const _AdvancedSettingTiles({required this.provider});
-
-  final TranslationProvider provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = context.read<Settings>();
-    final (:url, :headers, :body) = switch (provider) {
-      TranslationProvider.google => (
-        url: settings.translateGoogleUrl,
-        headers: settings.translateGoogleHeaders,
-        body: settings.translateGoogleBody,
-      ),
-      TranslationProvider.microsoft => (
-        url: settings.translateMicrosoftUrl,
-        headers: settings.translateMicrosoftHeaders,
-        body: settings.translateMicrosoftBody,
-      ),
-      TranslationProvider.openai => (
-        url: settings.translateOpenaiUrl,
-        headers: settings.translateOpenaiHeaders,
-        body: settings.translateOpenaiBody,
-      ),
-    };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SettingTextField(
-          setting: url,
-          labelText: 'Custom URL'.tr,
-          onRestore: () => url.value = '',
-        ),
-        _SettingTextField(
-          setting: headers,
-          labelText: 'Custom headers'.tr,
-          hintText: '{"Header": "value"}',
-          minLines: 2,
-          maxLines: 4,
-          onRestore: () => headers.value = '',
-        ),
-        _SettingTextField(
-          setting: body,
-          labelText: 'Custom body'.tr,
-          hintText: '{"key": "@value"}',
-          minLines: 2,
-          maxLines: 6,
-          onRestore: () => body.value = '',
-        ),
-      ],
     );
   }
 }
