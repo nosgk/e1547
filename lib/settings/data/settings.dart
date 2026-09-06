@@ -135,6 +135,17 @@ class Settings extends NotifiedSettings {
     initialValue: '[]',
   );
 
+  /// Play modes over the home feed: gacha blurs thumbnails until tapped,
+  /// the artist quiz hides the artist until revealed.
+  late final ValueNotifier<bool> gameGacha = createSetting<bool>(
+    key: 'gameGacha',
+    initialValue: false,
+  );
+  late final ValueNotifier<bool> gameQuiz = createSetting<bool>(
+    key: 'gameQuiz',
+    initialValue: false,
+  );
+
   // -------------------------------------------------------------------------
   // Appearance
   // -------------------------------------------------------------------------

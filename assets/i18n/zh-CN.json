@@ -75,6 +75,7 @@
   "Clear": {"en": "Clear", "zh": "清空", "ctx": "清空历史确认按钮"},
     "Clear date filter": {"en": "Clear date filter", "zh": "清除日期", "ctx": "随便看看·日期筛选清除"},
   "Clear order": {"en": "Clear order", "zh": "清除排序", "ctx": "随便看看·排序清除"},
+  "Clear species": {"en": "Clear species", "zh": "清除物种", "ctx": "随便看看·物种摇奖清除"},
 "Clear done": {"en": "Clear done", "zh": "清理已完成", "ctx": "任务页批量操作；清除已完成/已取消任务"},
   "Clear history": {"en": "Clear history", "zh": "清空历史", "ctx": "历史抽屉 tile 标题"},
   "Clear history?": {"en": "Clear history?", "zh": "清空历史？", "ctx": "清空历史确认对话框标题"},

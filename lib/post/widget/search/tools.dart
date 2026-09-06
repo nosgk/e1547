@@ -40,6 +40,30 @@ class SearchTools {
   void applyTags(String tags) =>
       controller.update((p) => p.copyWith(tags: tags));
 
+  /// Whether every token of [terms] is present in the current query.
+  bool hasTokens(List<String> terms) {
+    final tokens = tags.split(' ').toSet();
+    return terms.every(tokens.contains);
+  }
+
+  /// Adds [terms] to the query, or removes them when all are present.
+  void toggleTokens(List<String> terms) {
+    final tokens = tags.split(' ').where((token) => token.isNotEmpty).toList();
+    if (terms.every(tokens.contains)) {
+      tokens.removeWhere(terms.contains);
+    } else {
+      for (final term in terms) {
+        if (!tokens.contains(term)) tokens.add(term);
+      }
+    }
+    applyTags(tokens.join(' '));
+  }
+
+  /// Replaces the first token with [prefix] by [term] (removes it when
+  /// [term] is null).
+  void setTerm(String prefix, String? term) =>
+      applyTags(withTerm(prefix, term));
+
   String? orderLabel(String? term) => switch (term) {
     null => null,
     'order:favcount' => 'Most favorites'.tr,

@@ -1,5 +1,6 @@
 export 'appbar.dart';
 export 'favs.dart';
+export 'games.dart';
 export 'home.dart';
 export 'hot.dart';
 export 'list.dart';
@@ -7,5 +8,6 @@ export 'page.dart';
 export 'presets.dart';
 export 'query.dart';
 export 'slideshow.dart';
+export 'slot.dart';
 export 'tools.dart';
 export 'widget/widget.dart';

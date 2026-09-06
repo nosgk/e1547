@@ -110,6 +110,108 @@ class HomePage extends StatelessWidget {
                           const Divider(),
                           SectionHeader(
                             indent: SectionHeader.listTileIndent,
+                            title: 'Play modes'.tr,
+                          ),
+                          for (final game in kPlayGames)
+                            SwitchListTile(
+                              secondary: Icon(game.icon),
+                              title: Text(game.name.tr),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    game.description.tr,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: dimTextColor(context),
+                                        ),
+                                  ),
+                                  Text(
+                                    game.terms.join(' '),
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              value: tools.hasTokens(game.terms),
+                              onChanged: (_) => tools.toggleTokens(game.terms),
+                            ),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: settings.gameGacha,
+                            builder: (context, value, child) => SwitchListTile(
+                              secondary: const Icon(Icons.blur_on_outlined),
+                              title: Text('Gacha roll'.tr),
+                              subtitle: Text(
+                                'Every thumbnail stays blurred until revealed'
+                                    .tr,
+                              ),
+                              value: value,
+                              onChanged: (value) {
+                                settings.gameGacha.value = value;
+                                if (!value) GameReveals.instance.clearPosts();
+                              },
+                            ),
+                          ),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: settings.gameQuiz,
+                            builder: (context, value, child) => SwitchListTile(
+                              secondary: const Icon(Icons.quiz_outlined),
+                              title: Text('Artist quiz'.tr),
+                              subtitle: Text(
+                                'The artist is hidden; can you tell?'.tr,
+                              ),
+                              value: value,
+                              onChanged: (value) {
+                                settings.gameQuiz.value = value;
+                                if (!value) GameReveals.instance.clearArtists();
+                              },
+                            ),
+                          ),
+                          Builder(
+                            builder: (context) {
+                              final speciesTerm = tools.termOf('species:');
+                              return ListTile(
+                                leading: const Icon(Icons.pets_outlined),
+                                title: Text('Species slot'.tr),
+                                subtitle: speciesTerm == null
+                                    ? Text(
+                                        'Spin the slot and wander one species'
+                                            .tr,
+                                      )
+                                    : Text(
+                                        speciesTerm,
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                trailing: speciesTerm == null
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Clear species'.tr,
+                                        icon: const Icon(Icons.close, size: 18),
+                                        onPressed: () =>
+                                            tools.setTerm('species:', null),
+                                      ),
+                                onTap: () async {
+                                  final species = await showSpeciesSlotDialog(
+                                    context,
+                                  );
+                                  if (species != null && context.mounted) {
+                                    tools.setTerm(
+                                      'species:',
+                                      'species:$species',
+                                    );
+                                  }
+                                },
+                              );
+                            },
+                          ),
+                          const Divider(),
+                          SectionHeader(
+                            indent: SectionHeader.listTileIndent,
                             title: 'Quick search presets'.tr,
                           ),
                           ListTile(
