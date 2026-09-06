@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:e1547/client/client.dart';
@@ -9,8 +10,13 @@ import 'package:e1547/shared/shared.dart';
 import 'package:e1547/task/task.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:path/path.dart' as p;
+import 'package:saf_util/saf_util.dart';
 
 enum TaskKind { none, download, favorite, unfavorite, mixed, done }
+
+/// Outcome of the optional local-file deletion when clearing tasks.
+typedef TaskDownloadFilesResult = ({int deleted, int failed});
 
 const Duration _lingerAfterDone = Duration(seconds: 2);
 
@@ -358,10 +364,77 @@ class TasksController extends ChangeNotifier {
 
   /// Removes completed and canceled tasks. Failed tasks are kept so they stay
   /// visible for retry.
-  Future<void> clearDone() => repository.clear(
-    statuses: const {TaskStatus.completed, TaskStatus.canceled},
-    identity: identity,
-  );
+  ///
+  /// With [deleteFiles], the downloaded media of cleared download tasks is
+  /// deleted as well (best-effort; [TaskDownloadFilesResult] reports what
+  /// actually happened).
+  Future<TaskDownloadFilesResult?> clearDone({bool deleteFiles = false}) async {
+    final doomed = _active
+        .where(
+          (task) => const {
+            TaskStatus.completed,
+            TaskStatus.canceled,
+          }.contains(task.status),
+        )
+        .toList();
+    await repository.clear(
+      statuses: const {TaskStatus.completed, TaskStatus.canceled},
+      identity: identity,
+    );
+    if (!deleteFiles) return null;
+
+    var deleted = 0;
+    var failed = 0;
+    for (final task in doomed) {
+      if (task.action != TaskAction.download) continue;
+      if (await deleteDownloadedFile(task)) {
+        deleted++;
+      } else {
+        failed++;
+      }
+    }
+    return (deleted: deleted, failed: failed);
+  }
+
+  /// Deletes the downloaded media of a download task (best-effort). The
+  /// file location is reconstructed from the current download directory;
+  /// files saved to a different folder earlier cannot be found.
+  Future<bool> deleteDownloadedFile(Task task) async {
+    final String? fileName = task.metadata?.fileName;
+    final String? directory = settings.downloadPath.value;
+    if (fileName == null || directory == null) return false;
+    final String folder = AppInfo.instance.appName;
+
+    if (Platform.isAndroid && directory.startsWith('content:')) {
+      final saf = SafUtil();
+      final lastSegment = Uri.parse(directory).pathSegments.last;
+      final names = lastSegment == 'Pictures' ? [folder, fileName] : [fileName];
+      try {
+        final file = await saf.child(directory, names);
+        if (file == null) return false;
+        await saf.delete(file.uri, false);
+        return true;
+      } on Object {
+        return false;
+      }
+    }
+
+    for (final path in [
+      p.join(directory, fileName),
+      p.join(directory, folder, fileName),
+    ]) {
+      try {
+        final file = File(path);
+        if (file.existsSync()) {
+          await file.delete();
+          return true;
+        }
+      } on Object {
+        // Try the next candidate location.
+      }
+    }
+    return false;
+  }
 
   @override
   void dispose() {

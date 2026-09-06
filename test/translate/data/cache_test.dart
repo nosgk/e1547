@@ -38,7 +38,7 @@ void main() {
     expect(cache.get('e'), '5');
 
     // Entries are persisted (debounced write-back).
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
     final prefs = await SharedPreferences.getInstance();
     final stored =
         jsonDecode(prefs.getString('translateCache')!) as Map<String, dynamic>;

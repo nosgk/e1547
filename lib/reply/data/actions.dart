@@ -1,7 +1,9 @@
 import 'package:e1547/client/client.dart';
 import 'package:e1547/markup/markup.dart';
+import 'package:e1547/query/query.dart';
 import 'package:e1547/reply/reply.dart';
 import 'package:e1547/shared/shared.dart';
+import 'package:e1547/topic/topic.dart';
 import 'package:flutter/material.dart';
 
 Future<bool> quoteReply({required BuildContext context, required Reply reply}) {
@@ -32,7 +34,7 @@ Future<bool> writeReply({
   await Navigator.of(context).push(
     MaterialPageRoute(
       builder: (context) => DTextEditor(
-        title: Text('{id} reply'.trArgs({'id': topicId.toString()})),
+        title: _topicTitle(context, topicId),
         content: text ?? (reply?.body),
         onSubmitted: (text) async {
           final messenger = ScaffoldMessenger.of(context);
@@ -66,4 +68,27 @@ Future<bool> writeReply({
 
 extension Transitioning on Reply {
   String get hero => 'reply_$id';
+}
+
+/// Live title of the reply editor: the topic's current reply count,
+/// fetched fresh so the number is right even while the editor is open.
+Widget _topicTitle(BuildContext context, int topicId) {
+  return Builder(
+    builder: (context) {
+      final client = context.read<Client>();
+      return QueryBuilder(
+        query: client.topics.useGet(id: topicId),
+        builder: (context, state) {
+          final topic = state.data;
+          return Text(
+            topic == null
+                ? '…'
+                : '{count} replies'.trArgs({
+                    'count': topic.responseCount.toString(),
+                  }),
+          );
+        },
+      );
+    },
+  );
 }

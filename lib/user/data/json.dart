@@ -2,6 +2,9 @@ import 'package:deep_pick/deep_pick.dart';
 import 'package:e1547/user/user.dart';
 
 abstract final class E621User {
+  /// Parses a user from either the full `/users/<id>` endpoint or the
+  /// `/users` index. The index omits profile about-fields and most stat
+  /// counters; those parse to null there.
   static User fromJson(dynamic json) => pick(json).letOrThrow(
     (pick) => User(
       id: json['id'],
@@ -13,13 +16,13 @@ abstract final class E621User {
         comission: json['profile_artinfo'],
       ),
       stats: UserStats(
-        createdAt: pick('created_at').asDateTimeOrThrow(),
-        levelString: pick('level_string').asStringOrThrow(),
-        favoriteCount: pick('favorite_count').asIntOrThrow(),
-        postUpdateCount: pick('post_update_count').asIntOrThrow(),
-        postUploadCount: pick('post_upload_count').asIntOrThrow(),
-        forumPostCount: pick('forum_post_count').asIntOrThrow(),
-        commentCount: pick('comment_count').asIntOrThrow(),
+        createdAt: pick('created_at').asDateTimeOrNull(),
+        levelString: pick('level_string').asStringOrNull(),
+        favoriteCount: pick('favorite_count').asIntOrNull(),
+        postUpdateCount: pick('post_update_count').asIntOrNull(),
+        postUploadCount: pick('post_upload_count').asIntOrNull(),
+        forumPostCount: pick('forum_post_count').asIntOrNull(),
+        commentCount: pick('comment_count').asIntOrNull(),
       ),
     ),
   );

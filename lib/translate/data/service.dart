@@ -91,6 +91,7 @@ class TranslationService {
 
   int _inFlight = 0;
   final List<Completer<void>> _slotWaiters = [];
+  final Map<String, Future<String>> _inflight = {};
   DateTime _lastRequestStart = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Maximum number of translation requests in flight at the same time.
@@ -179,10 +180,22 @@ class TranslationService {
       return (text: cached, providerLabel: _providerLabel(config));
     }
 
-    final result = await _runProfile(text, config, null);
-
-    cache.put(cacheKey, result);
-    return (text: result, providerLabel: _providerLabel(config));
+    // Bulk surfaces (tag translation) often request identical texts
+    // concurrently; coalesce them into one request.
+    final inflight = _inflight[cacheKey];
+    if (inflight != null) {
+      final result = await inflight;
+      return (text: result, providerLabel: _providerLabel(config));
+    }
+    final future = _runProfile(text, config, null);
+    _inflight[cacheKey] = future;
+    try {
+      final result = await future;
+      cache.put(cacheKey, result);
+      return (text: result, providerLabel: _providerLabel(config));
+    } finally {
+      _inflight.remove(cacheKey);
+    }
   }
 
   /// Cache key of one translation. The AI model is part of the key so

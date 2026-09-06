@@ -46,7 +46,8 @@ class TasksPage extends StatelessWidget {
                           IconButton(
                             tooltip: 'clear done'.tr,
                             icon: const Icon(Icons.delete_sweep),
-                            onPressed: controller.clearDone,
+                            onPressed: () =>
+                                confirmClearDone(context, controller),
                           ),
                       ],
                     ),

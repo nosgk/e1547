@@ -88,7 +88,7 @@ class _GlobalActionsBar extends StatelessWidget {
               ActionButton(
                 icon: const Icon(Icons.delete_sweep),
                 label: Text('Clear done'.tr),
-                onTap: controller.clearDone,
+                onTap: () => confirmClearDone(context, controller),
               ),
           ],
         ),
@@ -133,6 +133,64 @@ class _SelectionBar extends StatelessWidget {
             ),
             ...taskBulkActions(controller, layoutData),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Asks whether to also delete the downloaded local files when clearing
+/// finished tasks, then clears. Shows a summary snackbar when files were
+/// deleted (or could not be).
+Future<void> confirmClearDone(
+  BuildContext context,
+  TasksController controller,
+) async {
+  bool deleteFiles = false;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text('Clear done'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Remove completed and canceled tasks?'.tr),
+            CheckboxListTile(
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              title: Text('Also delete downloaded files'.tr),
+              onChanged: (value) =>
+                  setState(() => deleteFiles = value ?? false),
+              value: deleteFiles,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('CANCEL'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Clear'.tr),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  final result = await controller.clearDone(deleteFiles: deleteFiles);
+  if (result == null || !context.mounted) return;
+  if (result.deleted > 0 || result.failed > 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text(
+          '{deleted} files deleted, {failed} failed'.trArgs({
+            'deleted': '${result.deleted}',
+            'failed': '${result.failed}',
+          }),
         ),
       ),
     );

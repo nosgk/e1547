@@ -19,11 +19,12 @@ class TranslationCache extends ChangeNotifier {
   static final TranslationCache instance = TranslationCache._();
 
   static const String _prefKey = 'translateCache';
-  static const Duration _saveDelay = Duration(milliseconds: 500);
+  static const Duration _saveDelay = Duration(milliseconds: 800);
 
   final Map<String, String> _entries = {};
   Future<void>? _loading;
   Timer? _saveTimer;
+  bool _dirty = false;
   int _limit = kDefaultTranslateCacheLimit;
 
   /// Waits for the stored entries to be loaded. Memoized, so repeated
@@ -60,8 +61,9 @@ class TranslationCache extends ChangeNotifier {
     final next = value < 0 ? 0 : value;
     if (next == _limit) return;
     _limit = next;
+    final before = _entries.length;
     _evict();
-    _scheduleSave();
+    if (_entries.length != before) _scheduleSave();
     notifyListeners();
   }
 
@@ -75,15 +77,15 @@ class TranslationCache extends ChangeNotifier {
         sum + utf8.encode(entry.key).length + utf8.encode(entry.value).length,
   );
 
-  /// Returns the cached translation for [key], or null. A hit refreshes the
-  /// entry's recency.
+  /// Returns the cached translation for [key], or null. A hit refreshes
+  /// the entry's recency in memory; persisting that recency is left to the
+  /// next write, so bulk reads never schedule timers.
   String? get(String key) {
     final value = _entries[key];
     if (value == null) return null;
     // Re-inserting moves the entry to the end (most recently used).
     _entries.remove(key);
     _entries[key] = value;
-    _scheduleSave();
     return value;
   }
 
@@ -101,6 +103,7 @@ class TranslationCache extends ChangeNotifier {
     _entries.clear();
     _saveTimer?.cancel();
     _saveTimer = null;
+    _dirty = true;
     notifyListeners();
     await _save();
   }
@@ -113,12 +116,14 @@ class TranslationCache extends ChangeNotifier {
   }
 
   void _scheduleSave() {
-    _saveTimer?.cancel();
-    _saveTimer = Timer(_saveDelay, _save);
+    _dirty = true;
+    _saveTimer ??= Timer(_saveDelay, _save);
   }
 
   Future<void> _save() async {
     _saveTimer = null;
+    if (!_dirty) return;
+    _dirty = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       if (_entries.isEmpty) {

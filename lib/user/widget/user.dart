@@ -3,6 +3,7 @@ import 'package:e1547/client/client.dart';
 import 'package:e1547/markup/markup.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/query/query.dart';
+import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:e1547/ticket/ticket.dart';
@@ -298,6 +299,50 @@ class _UserProfileActions extends StatelessWidget {
       icon: const Icon(Icons.more_vert),
       onSelected: (value) => value(),
       itemBuilder: (context) => [
+        PopupMenuTile(
+          title: 'Copy username'.tr,
+          icon: Icons.copy_outlined,
+          value: () {
+            Clipboard.setData(ClipboardData(text: user.name));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                duration: const Duration(seconds: 1),
+                content: Text('Copied username'.tr),
+              ),
+            );
+          },
+        ),
+        PopupMenuTile(
+          title: 'Save user favorites'.tr,
+          icon: Icons.favorite_border,
+          value: () async {
+            final settings = context.read<Settings>();
+            final tags = 'fav:${user.name}';
+            final peeks = parseSearchPresets(settings.favoritePeeks.value);
+            if (peeks.any((peek) => peek.tags == tags)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  duration: const Duration(seconds: 2),
+                  content: Text('Peek already saved'.tr),
+                ),
+              );
+              return;
+            }
+            peeks.add(
+              SearchPreset(
+                name: 'Saved {user} favorites'.trArgs({'user': user.name}),
+                tags: tags,
+              ),
+            );
+            settings.favoritePeeks.value = encodeSearchPresets(peeks);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                duration: const Duration(seconds: 2),
+                content: Text('Peek saved'.tr),
+              ),
+            );
+          },
+        ),
         PopupMenuTile(
           title: 'Browse',
           icon: Icons.open_in_browser,

@@ -64,6 +64,32 @@ class SearchTools {
   void setTerm(String prefix, String? term) =>
       applyTags(withTerm(prefix, term));
 
+  /// Applies [tag] from the universal slot machine, replacing the tag the
+  /// previous roll applied. Plain tag name, no category prefix.
+  void swapSlotTag(String tag, Settings settings) {
+    final previous = settings.slotTag.value;
+    final tokens = tags
+        .split(' ')
+        .where((token) => token.isNotEmpty && token != previous)
+        .toList();
+    if (!tokens.contains(tag)) tokens.add(tag);
+    applyTags(tokens.join(' '));
+    settings.slotTag.value = tag;
+  }
+
+  /// Removes the tag applied by the universal slot machine.
+  void clearSlotTag(Settings settings) {
+    final previous = settings.slotTag.value;
+    if (previous.isEmpty) return;
+    applyTags(
+      tags
+          .split(' ')
+          .where((token) => token.isNotEmpty && token != previous)
+          .join(' '),
+    );
+    settings.slotTag.value = '';
+  }
+
   String? orderLabel(String? term) => switch (term) {
     null => null,
     'order:favcount' => 'Most favorites'.tr,
@@ -221,62 +247,34 @@ class SearchTools {
   List<SearchPreset> presets(Settings settings) =>
       parseSearchPresets(settings.explorePresets.value);
 
-  Future<void> addPreset(BuildContext context) async {
-    final settings = context.read<Settings>();
-    final result = await _presetDialog(context, name: '', tags: tags);
-    if (result == null || !context.mounted) return;
-    final (name, presetTags) = result;
-    if (presetTags.trim().isEmpty) return;
-    final entries = [...presets(settings)];
-    entries.add(SearchPreset(name: name.trim(), tags: presetTags.trim()));
-    settings.explorePresets.value = encodeSearchPresets(entries);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Preset saved'.tr),
-      ),
-    );
-  }
-
-  Future<void> editPreset(BuildContext context, int index) async {
+  Future<void> savePreset(
+    BuildContext context,
+    SearchPreset original,
+    SearchPreset updated,
+  ) async {
+    if (updated.tags.isEmpty) return;
     final settings = context.read<Settings>();
     final entries = presets(settings);
-    if (index < 0 || index >= entries.length) return;
-    final preset = entries[index];
-    final result = await _presetDialog(
-      context,
-      name: preset.name,
-      tags: preset.tags,
-    );
-    if (result == null || !context.mounted) return;
-    final (name, presetTags) = result;
-    entries[index] = SearchPreset(name: name.trim(), tags: presetTags.trim());
+    final index = entries.indexOf(original);
+    if (index >= 0) {
+      entries[index] = updated;
+    } else {
+      entries.add(updated);
+    }
     settings.explorePresets.value = encodeSearchPresets(entries);
+    if (index < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Preset saved'.tr),
+        ),
+      );
+    }
   }
 
-  Future<void> deletePreset(BuildContext context, int index) async {
+  Future<void> deletePreset(BuildContext context, SearchPreset preset) async {
     final settings = context.read<Settings>();
-    final entries = presets(settings);
-    if (index < 0 || index >= entries.length) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete preset'.tr),
-        content: Text('Delete this preset?'.tr),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('CANCEL'.tr),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete'.tr),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-    entries.removeAt(index);
+    final entries = presets(settings)..remove(preset);
     settings.explorePresets.value = encodeSearchPresets(entries);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -286,64 +284,5 @@ class SearchTools {
     );
   }
 
-  void applyPreset(SearchPreset preset) {
-    applyTags(preset.tags);
-  }
-
-  /// Name (remark) + tags editor of a preset; returns the entry or null.
-  Future<(String, String)?> _presetDialog(
-    BuildContext context, {
-    required String name,
-    required String tags,
-  }) async {
-    final nameController = TextEditingController(text: name);
-    final tagsController = TextEditingController(text: tags);
-    final result = await showDialog<(String, String)>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          name.isEmpty ? 'Save current as preset'.tr : 'Edit preset'.tr,
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              autofocus: name.isEmpty,
-              decoration: InputDecoration(
-                labelText: 'Preset name'.tr,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: tagsController,
-              minLines: 1,
-              maxLines: 3,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-              decoration: InputDecoration(
-                labelText: 'Search parameters'.tr,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('CANCEL'.tr),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(
-              context,
-            ).pop((nameController.text.trim(), tagsController.text.trim())),
-            child: Text('Save'.tr),
-          ),
-        ],
-      ),
-    );
-    return result;
-  }
+  void applyPreset(SearchPreset preset) => applyTags(preset.tags);
 }

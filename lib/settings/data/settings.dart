@@ -146,6 +146,20 @@ class Settings extends NotifiedSettings {
     initialValue: false,
   );
 
+  /// Saved other-user favorite searches ("[{name, tags}]"), managed from
+  /// the user menu and the favorites page drawer.
+  late final ValueNotifier<String> favoritePeeks = createSetting(
+    key: 'favoritePeeks',
+    initialValue: '[]',
+  );
+
+  /// The tag currently applied by the universal slot machine, so a reroll
+  /// can replace it in the query.
+  late final ValueNotifier<String> slotTag = createSetting(
+    key: 'slotTag',
+    initialValue: '',
+  );
+
   // -------------------------------------------------------------------------
   // Appearance
   // -------------------------------------------------------------------------

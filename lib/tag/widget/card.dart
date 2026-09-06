@@ -151,15 +151,19 @@ class TranslatedTagText extends StatelessWidget {
   Widget _content(BuildContext context, TranslationEntry entry) {
     final plain = _plain(context);
     if (entry.status == TranslationStatus.loading) {
+      // A static ellipsis instead of a spinner: bulk tag translation can
+      // have dozens of entries loading at once, and that many ticking
+      // animations stutter the whole grid.
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(child: plain),
           const SizedBox(width: 4),
-          const SizedBox(
-            width: 10,
-            height: 10,
-            child: CircularProgressIndicator(strokeWidth: 1.5),
+          Text(
+            '…',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
           ),
         ],
       );
