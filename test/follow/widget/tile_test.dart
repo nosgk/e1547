@@ -58,6 +58,7 @@ void main() {
         headers: null,
       ),
       traits: traits,
+      connectTimeout: noTestConnectTimeout,
       storage: AppStorage(
         preferences: await SharedPreferences.getInstance(),
         temporaryFiles: '.',
@@ -65,6 +66,7 @@ void main() {
         sqlite: sqlite,
       ),
     );
+    addTearDown(client.dispose);
   });
 
   tearDown(() => traits.dispose());

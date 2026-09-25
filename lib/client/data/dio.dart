@@ -10,7 +10,11 @@ import 'package:e1547/shared/shared.dart';
 import 'package:native_dio_adapter/native_dio_adapter.dart';
 
 /// Create a default [Dio] instance for the given [Identity].
-Dio createDefaultDio(Identity identity, {CachedQuery? queryCache}) {
+Dio createDefaultDio(
+  Identity identity, {
+  CachedQuery? queryCache,
+  Duration? connectTimeout,
+}) {
   final dio = Dio(
     BaseOptions(
       baseUrl: normalizeHostUrl(identity.host),
@@ -19,7 +23,7 @@ Dio createDefaultDio(Identity identity, {CachedQuery? queryCache}) {
         ...?identity.headers,
       },
       sendTimeout: const Duration(seconds: 30),
-      connectTimeout: const Duration(seconds: 30),
+      connectTimeout: connectTimeout ?? const Duration(seconds: 30),
     ),
   );
   dio.httpClientAdapter = NativeAdapter();

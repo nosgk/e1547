@@ -4,7 +4,11 @@ import 'package:e1547/identity/identity.dart';
 
 import 'fake_e621.dart';
 
-Dio dioFor(FakeE621 fake, {Credentials? credentials}) => createDefaultDio(
+Dio dioFor(
+  FakeE621 fake, {
+  Credentials? credentials,
+  Duration? connectTimeout,
+}) => createDefaultDio(
   Identity(
     id: 1,
     host: fake.url,
@@ -13,4 +17,5 @@ Dio dioFor(FakeE621 fake, {Credentials? credentials}) => createDefaultDio(
         ? null
         : {'authorization': credentials.basicAuth},
   ),
+  connectTimeout: connectTimeout,
 );

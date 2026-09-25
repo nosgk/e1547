@@ -84,6 +84,7 @@ class TasksController extends ChangeNotifier {
   );
   StreamSubscription<List<Task>>? _activeSub;
   Timer? _hideTimer;
+  final List<Timer> _cancelDrops = [];
   bool _seeded = false;
   bool _drainingDownloads = false;
   bool _drainingApi = false;
@@ -405,10 +406,11 @@ class TasksController extends ChangeNotifier {
       }
       rethrow;
     } finally {
-      Timer(
+      final Timer drop = Timer(
         const Duration(seconds: 2),
         () => dropFileCacheCancelToken(cancelToken),
       );
+      _cancelDrops.add(drop);
     }
     throw FileDownloadException('Download stream ended without file');
   }
@@ -534,6 +536,10 @@ class TasksController extends ChangeNotifier {
     _disposed = true;
     _activeSub?.cancel();
     _hideTimer?.cancel();
+    for (final Timer timer in _cancelDrops) {
+      timer.cancel();
+    }
+    _cancelDrops.clear();
     for (final notifier in _progress.values) {
       notifier.dispose();
     }

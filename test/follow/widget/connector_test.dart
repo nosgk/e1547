@@ -48,6 +48,7 @@ void main() {
     client = Client(
       identity: identity,
       traits: traits,
+      connectTimeout: noTestConnectTimeout,
       storage: AppStorage(
         preferences: await SharedPreferences.getInstance(),
         temporaryFiles: '.',
@@ -60,6 +61,7 @@ void main() {
         sqlite: sqlite,
       ),
     );
+    addTearDown(client.dispose);
   });
 
   tearDown(() async {

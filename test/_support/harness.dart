@@ -31,9 +31,18 @@ Future<void> initializeTestApp() async {
 
 /// Query builders schedule their cache entry for deletion as they unmount, and
 /// that timer has to run out while the test still owns the clock.
+///
+/// Widget tests that open a gallery also start real HTTP from `runAsync`.
+/// Dio's connect timeout is a `Timer` created back in the test's fake clock,
+/// and closing the client afterwards cannot cancel it. Tests opt out of that
+/// timeout and drop the client before the binding checks for pending timers.
 void displayTest(String description, WidgetTesterCallback body) =>
     testWidgets(description, (tester) async {
       await body(tester);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(seconds: 1));
     });
+
+/// Stops a Dio instance from arming the 30s connect timer that widget tests
+/// cannot drain. Pass this as `connectTimeout` to `createDefaultDio`.
+const Duration noTestConnectTimeout = Duration.zero;

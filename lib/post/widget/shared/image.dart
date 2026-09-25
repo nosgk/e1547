@@ -167,16 +167,24 @@ class _ViewportCachedImageState extends State<ViewportCachedImage> {
   void dispose() {
     _cancelTimer?.cancel();
     final CancelToken? token = _token;
-    if (token != null) _release(token);
+    if (token != null) {
+      if (!token.isCancelled) token.cancel();
+      dropFileCacheCancelToken(token);
+    }
     super.dispose();
   }
 
   /// Cancels now, but leaves the token in the map briefly so a GET that
-  /// already has the header can still pick it up. A cache hit never calls
-  /// GET, so the delayed drop keeps the map from growing.
+  /// already copied the header can still pick it up. A cache hit never
+  /// calls GET, so the delayed drop keeps the map from growing. The timer
+  /// is tracked and cancelled in [dispose], otherwise widget tests fail.
   void _release(CancelToken token) {
     if (!token.isCancelled) token.cancel();
-    Timer(const Duration(seconds: 2), () => dropFileCacheCancelToken(token));
+    _cancelTimer?.cancel();
+    _cancelTimer = Timer(
+      const Duration(seconds: 2),
+      () => dropFileCacheCancelToken(token),
+    );
   }
 
   void _ensureToken() {
