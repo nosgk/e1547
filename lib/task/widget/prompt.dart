@@ -117,12 +117,12 @@ class _SelectionBar extends StatelessWidget {
         child: Row(
           children: [
             IconButton(
-              tooltip: 'clear selection',
+              tooltip: 'Clear selection'.tr,
               icon: const Icon(Icons.close),
               onPressed: layoutData.clear,
             ),
             Text(
-              '${selected.length} selected',
+              '{count} selected'.trArgs({'count': '${selected.length}'}),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),

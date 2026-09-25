@@ -40,7 +40,7 @@ class RatingEditDisplay extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Rating', style: TextStyle(fontSize: 16)),
+          Text('Rating'.tr, style: const TextStyle(fontSize: 16)),
           const SizedBox(height: 8),
           DropdownButtonFormField<Rating>(
             initialValue: rating,

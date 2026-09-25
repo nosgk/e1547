@@ -1,4 +1,6 @@
+import 'package:e1547/client/client.dart';
 import 'package:e1547/post/post.dart';
+import 'package:e1547/query/query.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:e1547/user/user.dart';
@@ -33,7 +35,7 @@ class ArtistDisplay extends StatelessWidget {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         duration: const Duration(seconds: 1),
-                        content: Text('Copied post id #${post.id}'),
+                        content: Text('Copied post id #{id}'.trArgs({'id': '${post.id}'})),
                       ),
                     );
                   },
@@ -53,7 +55,7 @@ class ArtistDisplay extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.person, size: 14),
+                        UserIdAvatar(userId: post.uploaderId, radius: 10),
                         const SizedBox(width: 4),
                         Text(post.uploaderId.toString()),
                       ],
@@ -94,10 +96,8 @@ class ArtistName extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Icon(Icons.account_circle),
-                      ),
+                      ArtistUserAvatar(name: artist),
+                      const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           tagToName(artist),
@@ -124,5 +124,33 @@ class ArtistName extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+/// Artist-tag face. Looks the user up by name and falls back to the
+/// default avatar when the tag is not a user, or while that lookup is
+/// still running.
+class ArtistUserAvatar extends StatelessWidget {
+  const ArtistUserAvatar({super.key, required this.name, this.radius = 10});
+
+  final String name;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return QueryBuilder(
+      query: context.watch<Client>().users.useGetByName(name: name),
+      builder: (context, state) {
+        final user = state.data;
+        if (user == null) return EmptyAvatar(radius: radius);
+        return UserAvatar(
+          id: user.avatarId,
+          userId: user.id,
+          hasCroppedAvatar: user.hasCroppedAvatar,
+          radius: radius,
+          onTap: () {},
+        );
+      },
+    );
   }
 }

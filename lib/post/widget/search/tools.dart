@@ -286,3 +286,73 @@ class SearchTools {
 
   void applyPreset(SearchPreset preset) => applyTags(preset.tags);
 }
+
+/// Date, order, presets, and play modes from the home drawer, reused by
+/// Hot and Search.
+class PostSearchTools extends StatelessWidget {
+  const PostSearchTools({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tools = SearchTools(context.watch<PostParamsController>());
+    final settings = context.watch<Settings>();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SearchPresetGroup(
+          title: 'Quick search presets'.tr,
+          presets: settings.explorePresets,
+          addTags: tools.tags,
+          onSave: (original, updated) =>
+              tools.savePreset(context, original, updated),
+          onDelete: (preset) => tools.deletePreset(context, preset),
+          onApply: tools.applyPreset,
+        ),
+        const Divider(),
+        SectionHeader(
+          indent: SectionHeader.listTileIndent,
+          title: 'Quick sort'.tr,
+        ),
+        Builder(
+          builder: (context) {
+            final dateTerm = tools.termOf('date:');
+            return ListTile(
+              leading: const Icon(Icons.event_outlined),
+              title: Text('Post date'.tr),
+              subtitle: Text(
+                dateTerm ?? 'No date filter'.tr,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              trailing: dateTerm == null
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear date filter'.tr,
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () =>
+                          tools.applyTags(tools.withTerm('date:', null)),
+                    ),
+              onTap: () => tools.pickDate(context),
+            );
+          },
+        ),
+        Builder(
+          builder: (context) {
+            final orderTerm = tools.termOf('order:');
+            return ListTile(
+              leading: const Icon(Icons.sort_outlined),
+              title: Text('Order'.tr),
+              subtitle: Text(
+                orderTerm == null
+                    ? '—'
+                    : (tools.orderLabel(orderTerm) ?? orderTerm),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              onTap: () => tools.pickOrder(context),
+            );
+          },
+        ),
+        const Divider(),
+      ],
+    );
+  }
+}

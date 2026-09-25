@@ -1,6 +1,8 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:e1547/client/client.dart';
 import 'package:e1547/post/post.dart';
+import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
@@ -76,6 +78,118 @@ const List<PlayGame> kPlayGames = [
     ['~type:webm', '~type:gif'],
   ),
 ];
+
+/// Home-drawer play modes (tag games, gacha, quiz, slot, slideshow).
+/// Shared by Home, Hot, and Search so the same controls stay in sync.
+class PostPlayModes extends StatelessWidget {
+  const PostPlayModes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tools = SearchTools(context.watch<PostParamsController>());
+    final settings = context.watch<Settings>();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SectionHeader(
+          indent: SectionHeader.listTileIndent,
+          title: 'Play modes'.tr,
+        ),
+        for (final game in kPlayGames)
+          SwitchListTile(
+            secondary: Icon(game.icon),
+            title: Text(game.name.tr),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  game.description.tr,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: dimTextColor(context),
+                  ),
+                ),
+                Text(
+                  game.terms.join(' '),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                ),
+              ],
+            ),
+            value: tools.hasTokens(game.terms),
+            onChanged: (_) => tools.toggleTokens(game.terms),
+          ),
+        ValueListenableBuilder<bool>(
+          valueListenable: settings.gameGacha,
+          builder: (context, value, child) => SwitchListTile(
+            secondary: const Icon(Icons.blur_on_outlined),
+            title: Text('Gacha roll'.tr),
+            subtitle: Text('Every thumbnail stays blurred until revealed'.tr),
+            value: value,
+            onChanged: (value) {
+              settings.gameGacha.value = value;
+              if (!value) GameReveals.instance.clearPosts();
+            },
+          ),
+        ),
+        ValueListenableBuilder<bool>(
+          valueListenable: settings.gameQuiz,
+          builder: (context, value, child) => SwitchListTile(
+            secondary: const Icon(Icons.quiz_outlined),
+            title: Text('Artist quiz'.tr),
+            subtitle: Text('The artist is hidden; can you tell?'.tr),
+            value: value,
+            onChanged: (value) {
+              settings.gameQuiz.value = value;
+              if (!value) GameReveals.instance.clearArtists();
+            },
+          ),
+        ),
+        Builder(
+          builder: (context) {
+            final slotTag = settings.slotTag.value;
+            return ListTile(
+              leading: const Icon(Icons.casino_outlined),
+              title: Text('Universal slot'.tr),
+              subtitle: slotTag.isEmpty
+                  ? Text('Roll a random tag from a chosen category'.tr)
+                  : Text(
+                      slotTag,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+              trailing: slotTag.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear slot tag'.tr,
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => tools.clearSlotTag(settings),
+                    ),
+              onTap: () async {
+                final tag = await showTagSlotDialog(
+                  context,
+                  tags: context.read<Client>().tags,
+                );
+                if (tag != null && context.mounted) {
+                  tools.swapSlotTag(tag, settings);
+                }
+              },
+            );
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.slideshow_outlined),
+          title: Text('Zen slideshow'.tr),
+          subtitle: Text('Fullscreen auto-advancing show'.tr),
+          onTap: () {
+            Navigator.of(context).pop();
+            showSlideshowPicker(context, initialTags: tools.tags);
+          },
+        ),
+      ],
+    );
+  }
+}
 
 /// Blurs a post thumbnail until it is revealed: the first tap lifts the
 /// blur, the next tap opens the post. Inert unless the gacha play mode is

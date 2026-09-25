@@ -81,8 +81,8 @@ class TagListActions extends StatelessWidget {
                                 ? const Icon(Icons.person_remove_alt_1)
                                 : const Icon(Icons.person_add_alt_1),
                             label: following
-                                ? const Text('Unfollow')
-                                : const Text('Follow'),
+                                ? Text('Unfollow'.tr)
+                                : Text('Follow'.tr),
                             onTap: () => applyFollowMutation(FollowType.update),
                           ),
                           CrossFade(
@@ -92,8 +92,8 @@ class TagListActions extends StatelessWidget {
                                   ? const Icon(Icons.notifications_active)
                                   : const Icon(Icons.notifications_none),
                               label: notifying
-                                  ? const Text('Mute')
-                                  : const Text('Notify'),
+                                  ? Text('Mute'.tr)
+                                  : Text('Notify'.tr),
                               onTap: () async {
                                 if (!hasFollow) return;
                                 await client.follows.update(
@@ -111,8 +111,8 @@ class TagListActions extends StatelessWidget {
                                 ? const Icon(Icons.turned_in)
                                 : const Icon(Icons.turned_in_not),
                             label: bookmarked
-                                ? const Text('Unbookmark')
-                                : const Text('Bookmark'),
+                                ? Text('Unbookmark'.tr)
+                                : Text('Bookmark'.tr),
                             onTap: () =>
                                 applyFollowMutation(FollowType.bookmark),
                           ),
@@ -193,7 +193,7 @@ class AddTagAction extends StatelessWidget {
 
     return ActionButton(
       icon: const Icon(Icons.zoom_in),
-      label: const Text('Add'),
+      label: Text('Add'.tr),
       onTap: () {
         Navigator.of(context).maybePop();
         controller.addTag(tag);

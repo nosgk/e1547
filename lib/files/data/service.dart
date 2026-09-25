@@ -4,6 +4,28 @@ import 'package:dio/dio.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:mime/mime.dart';
 
+/// Header a gallery tile uses to hand its [CancelToken] to this one GET.
+/// It is removed before the request, so the server never sees it.
+const String fileCacheCancelHeader = 'x-e1547-cancel';
+
+final Map<String, CancelToken> _fileCacheCancelTokens = <String, CancelToken>{};
+
+/// Stash [token] and return the header value that retrieves it.
+String stashFileCacheCancelToken(CancelToken token) {
+  final String key = identityHashCode(token).toString();
+  _fileCacheCancelTokens[key] = token;
+  return key;
+}
+
+CancelToken? takeFileCacheCancelToken(String? key) {
+  if (key == null) return null;
+  return _fileCacheCancelTokens.remove(key);
+}
+
+void dropFileCacheCancelToken(CancelToken token) {
+  _fileCacheCancelTokens.remove(identityHashCode(token).toString());
+}
+
 class DioFileService extends FileService {
   DioFileService(this.dio, {this.receiveTimeout = const Duration(seconds: 30)});
 
@@ -15,18 +37,25 @@ class DioFileService extends FileService {
   Future<FileServiceResponse> get(
     String url, {
     Map<String, String>? headers,
-  }) async => DioFileServiceResponse(
-    await dio.get<ResponseBody>(
-      url,
-      options: Options(
-        responseType: ResponseType.stream,
-        headers: headers,
-        receiveTimeout: receiveTimeout,
-        // The cache reads the status itself, and evicts on 404.
-        validateStatus: (status) => true,
+  }) async {
+    final Map<String, String> requestHeaders = {...?headers};
+    final CancelToken? cancelToken = takeFileCacheCancelToken(
+      requestHeaders.remove(fileCacheCancelHeader),
+    );
+    return DioFileServiceResponse(
+      await dio.get<ResponseBody>(
+        url,
+        cancelToken: cancelToken,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: requestHeaders,
+          receiveTimeout: receiveTimeout,
+          // The cache reads the status itself, and evicts on 404.
+          validateStatus: (status) => true,
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class DioFileServiceResponse implements FileServiceResponse {

@@ -94,7 +94,7 @@ class _PostEditPageState extends State<PostEditPage> {
 
       if (state.isError) {
         messenger.showSnackBar(
-          SnackBar(content: Text('Failed to update post #${widget.post.id}')),
+          SnackBar(content: Text('Failed to update post #{id}'.trArgs({'id': '${widget.post.id}'}))),
         );
         return;
       }

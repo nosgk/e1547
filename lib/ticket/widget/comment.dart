@@ -12,7 +12,7 @@ class CommentReportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReasonReportScreen(
-      title: Text('Comment #${comment.id}'),
+      title: Text('Comment #{id}'.trArgs({'id': '${comment.id}'})),
       onReport: (reason) => validateCall(
         () => context.read<Client>().tickets.create(
           type: TicketType.comment,
@@ -20,8 +20,8 @@ class CommentReportScreen extends StatelessWidget {
           reason: reason,
         ),
       ),
-      onSuccess: 'Reported comment #${comment.id}',
-      onFailure: 'Failed to report user #${comment.id}',
+      onSuccess: 'Reported comment #{id}'.trArgs({'id': '${comment.id}'}),
+      onFailure: 'Failed to report comment #{id}'.trArgs({'id': '${comment.id}'}),
       previewBuilder: (context, isLoading) => Card(
         clipBehavior: Clip.antiAlias,
         child: ReportLoadingOverlay(

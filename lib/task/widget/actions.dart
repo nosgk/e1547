@@ -28,7 +28,7 @@ List<Widget> taskBulkActions(
       ),
     if (hasRetryable)
       IconButton(
-        tooltip: 'retry',
+        tooltip: 'retry'.tr,
         icon: const Icon(Icons.refresh),
         onPressed: () async {
           for (final t in selected) {

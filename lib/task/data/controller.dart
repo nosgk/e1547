@@ -50,15 +50,29 @@ class TasksController extends ChangeNotifier {
   final Set<int> _runningIds = {};
   bool isRunning(int taskId) => _runningIds.contains(taskId);
 
-  /// Sum of in-flight progress across all running tasks (0..n), driving the
-  /// aggregate bubble progress.
-  final ValueNotifier<double> currentProgress = ValueNotifier(0);
-
-  /// Per-task download progress, so each running tile updates on its own
-  /// without rebuilding the others.
-  final Map<int, ValueNotifier<double>> _progress = {};
-  ValueListenable<double>? progressOf(int taskId) => _progress[taskId];
-
+   /// Sum of in-flight progress across all running tasks (0..n), driving the
+   /// aggregate bubble progress.
+   final ValueNotifier<double> currentProgress = ValueNotifier(0);
+ 
+ 
+   /// Per-task download progress, so each running tile updates on its own
+   /// without rebuilding the others.
+   final Map<int, ValueNotifier<double>> _progress = {};
+   ValueListenable<double>? progressOf(int taskId) => _progress[taskId];
+ 
+   /// Bytes received / expected and an instantaneous rate, for the task list.
+   final Map<int, ValueNotifier<DownloadTransfer>> _transfers = {};
+   ValueListenable<DownloadTransfer>? transferOf(int taskId) =>
+       _transfers[taskId];
+ 
+   static const int _minDownloadWorkers = 1;
+   static const int _maxDownloadWorkers = 8;
+ 
+   int get _downloadWorkerCount =>
+       settings.downloadConcurrency.value.clamp(
+         _minDownloadWorkers,
+         _maxDownloadWorkers,
+       );
   StreamSubscription<List<Task>>? _activeSub;
   Timer? _hideTimer;
   bool _seeded = false;
@@ -66,9 +80,10 @@ class TasksController extends ChangeNotifier {
   bool _drainingApi = false;
   bool _disposed = false;
 
-  // Downloads hit the CDN, which is free of the API rate limit, so they run
-  // concurrently. Favorites and unfavorites stay on a single sequential lane.
-  static const int _maxConcurrentDownloads = 4;
+   // Downloads hit the CDN, which is free of the API rate limit, so they run
+   // concurrently. Favorites and unfavorites stay on a single sequential lane.
+   // Worker count comes from [Settings.downloadConcurrency].
+ 
 
   // Kept separate from the controller's own listeners so toggling doesn't
   // mark Provider scopes dirty mid-build.
@@ -190,9 +205,10 @@ class TasksController extends ChangeNotifier {
     if (_drainingDownloads || _disposed) return;
     _drainingDownloads = true;
     try {
-      await Future.wait([
-        for (int i = 0; i < _maxConcurrentDownloads; i++) _downloadWorker(),
-      ]);
+       await Future.wait([
+         for (int i = 0; i < _downloadWorkerCount; i++) _downloadWorker(),
+       ]);
+ 
     } finally {
       _drainingDownloads = false;
     }
@@ -226,10 +242,14 @@ class TasksController extends ChangeNotifier {
     }
   }
 
-  Future<void> _process(Task task) async {
-    _runningIds.add(task.id);
-    _progress[task.id] = ValueNotifier<double>(0);
-    notifyListeners();
+   Future<void> _process(Task task) async {
+     _runningIds.add(task.id);
+     _progress[task.id] = ValueNotifier<double>(0);
+     if (task.action == TaskAction.download) {
+       _transfers[task.id] = ValueNotifier(const DownloadTransfer());
+     }
+     notifyListeners();
+ 
     try {
       await _runOne(task);
       final TaskStatus? current = await repository.readStatus(task.id);
@@ -249,8 +269,10 @@ class TasksController extends ChangeNotifier {
       }
     } finally {
       _runningDone++;
-      _runningIds.remove(task.id);
-      _progress.remove(task.id)?.dispose();
+       _runningIds.remove(task.id);
+       _progress.remove(task.id)?.dispose();
+       _transfers.remove(task.id)?.dispose();
+ 
       _recomputeProgress();
       notifyListeners();
     }
@@ -314,14 +336,37 @@ class TasksController extends ChangeNotifier {
         'Download task missing file metadata (post #${task.postId})',
       );
     }
-    final ValueNotifier<double>? progress = _progress[task.id];
-    await for (final response in cacheManager.getFileStream(
-      url,
-      withProgress: true,
-    )) {
-      if (response is DownloadProgress) {
-        progress?.value = (response.progress ?? 0).clamp(0, 1);
-        _recomputeProgress();
+     final ValueNotifier<double>? progress = _progress[task.id];
+     final ValueNotifier<DownloadTransfer>? transfer = _transfers[task.id];
+     final Stopwatch clock = Stopwatch()..start();
+     int lastBytes = 0;
+     int lastMillis = 0;
+     await for (final response in cacheManager.getFileStream(
+       url,
+       withProgress: true,
+     )) {
+       if (response is DownloadProgress) {
+         final int received = response.downloaded;
+         final int? total = response.totalSize;
+         final double fraction = total != null && total > 0
+             ? (received / total).clamp(0, 1)
+             : (response.progress ?? 0).clamp(0, 1);
+         progress?.value = fraction;
+         final int elapsed = clock.elapsedMilliseconds;
+         final int deltaMillis = elapsed - lastMillis;
+         double rate = transfer?.value.bytesPerSecond ?? 0;
+         if (deltaMillis >= 250 && received >= lastBytes) {
+           rate = (received - lastBytes) * 1000 / deltaMillis;
+           lastBytes = received;
+           lastMillis = elapsed;
+         }
+         transfer?.value = DownloadTransfer(
+           received: received,
+           total: total,
+           bytesPerSecond: rate,
+         );
+         _recomputeProgress();
+ 
       } else if (response is FileInfo) {
         try {
           await FileDownloader.downloadImage(
@@ -441,10 +486,15 @@ class TasksController extends ChangeNotifier {
     _disposed = true;
     _activeSub?.cancel();
     _hideTimer?.cancel();
-    for (final notifier in _progress.values) {
-      notifier.dispose();
-    }
-    _progress.clear();
+     for (final notifier in _progress.values) {
+       notifier.dispose();
+     }
+     for (final notifier in _transfers.values) {
+       notifier.dispose();
+     }
+     _progress.clear();
+     _transfers.clear();
+ 
     currentProgress.dispose();
     suppressBubble.dispose();
     super.dispose();

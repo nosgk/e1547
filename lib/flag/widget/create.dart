@@ -54,7 +54,7 @@ class _PostFlagScreenState extends State<PostFlagScreen> {
         messenger.showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 1),
-            content: Text('Flagged post #${widget.post.id}'),
+            content: Text('Flagged post #{id}'.trArgs({'id': '${widget.post.id}'})),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -83,7 +83,7 @@ class _PostFlagScreenState extends State<PostFlagScreen> {
         child: Scaffold(
           appBar: DefaultAppBar(
             elevation: 0,
-            title: Text('Post #${widget.post.id}'),
+            title: Text('Post #{id}'.trArgs({'id': '${widget.post.id}'})),
             leading: const CloseButton(),
           ),
           floatingActionButton: Builder(
@@ -131,9 +131,9 @@ class _PostFlagScreenState extends State<PostFlagScreen> {
                       child: TextFormField(
                         enabled: !isLoading,
                         controller: parentController,
-                        decoration: const InputDecoration(
-                          labelText: 'Parent ID',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: 'Parent ID'.tr,
+                          border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -141,10 +141,10 @@ class _PostFlagScreenState extends State<PostFlagScreen> {
                         ],
                         validator: (value) {
                           if (value!.trim().isEmpty) {
-                            return 'Parent ID cannot be empty';
+                            return 'Parent ID cannot be empty'.tr;
                           }
                           if (int.tryParse(value) == null) {
-                            return 'Parent ID must be a number';
+                            return 'Parent ID must be a number'.tr;
                           }
                           return null;
                         },

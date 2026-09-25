@@ -185,6 +185,12 @@ class Avatar extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.cover,
             cacheManager: context.read<BaseCacheManager>(),
+            memCacheWidth: (radius * 2 * MediaQuery.devicePixelRatioOf(context))
+                .round()
+                .clamp(1, 256),
+            memCacheHeight: (radius * 2 * MediaQuery.devicePixelRatioOf(context))
+                .round()
+                .clamp(1, 256),
             placeholder: (context, url) => EmptyAvatar(radius: radius),
             errorWidget: (context, url, error) =>
                 const Center(child: Icon(Icons.warning_amber)),

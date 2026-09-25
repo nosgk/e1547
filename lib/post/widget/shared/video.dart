@@ -1,5 +1,6 @@
 import 'dart:async';
-
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
@@ -162,13 +163,55 @@ class _VideoBarState extends State<VideoBar> {
       }),
     ]);
   }
-
   @override
   void dispose() {
     for (final s in subscriptions) {
       s.cancel();
     }
     super.dispose();
+  }
+
+  Duration _frameStep() {
+    final double? fps = widget.player.state.tracks.video
+        .map((track) => track.fps)
+        .whereType<double>()
+        .where((fps) => fps > 1 && fps < 240)
+        .firstOrNull;
+    final int micros = ((1000000 / (fps ?? 24)).round()).clamp(1000, 200000);
+    return Duration(microseconds: micros);
+  }
+
+  Future<void> _stepFrame(int direction) async {
+    final Duration current = widget.player.state.position;
+    final Duration target = videoSeekTarget(
+      position: current,
+      duration: widget.player.state.duration,
+      offset: _frameStep() * direction,
+    );
+    if (target == current) return;
+    await widget.player.pause();
+    await widget.player.seek(target);
+  }
+
+  Future<void> _saveFrame() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final Uint8List? bytes = await widget.player.screenshot(format: 'image/png');
+    if (!mounted || bytes == null) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not capture frame'.tr)));
+      return;
+    }
+    final File file = File(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}e1547-frame-${DateTime.now().millisecondsSinceEpoch}.png',
+    );
+    await file.writeAsBytes(bytes, flush: true);
+    try {
+      await FileDownloader.downloadImage(file: file, directory: null);
+      messenger.showSnackBar(SnackBar(content: Text('Frame saved'.tr)));
+    } on FileDownloadException {
+      messenger.showSnackBar(SnackBar(content: Text('Could not save frame'.tr)));
+    } finally {
+      if (file.existsSync()) await file.delete();
+    }
   }
 
   @override
@@ -221,6 +264,24 @@ class _VideoBarState extends State<VideoBar> {
                   ),
                   Text(duration.toString().substring(2, 7)),
                   const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'Previous frame'.tr,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.skip_previous),
+                    onPressed: () => _stepFrame(-1),
+                  ),
+                  IconButton(
+                    tooltip: 'Next frame'.tr,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.skip_next),
+                    onPressed: () => _stepFrame(1),
+                  ),
+                  IconButton(
+                    tooltip: 'Save frame'.tr,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    onPressed: _saveFrame,
+                  ),
                   InkWell(
                     onTap: Navigator.of(context).maybePop,
                     child: Padding(
@@ -314,7 +375,9 @@ class _VideoGestureState extends State<VideoGesture>
                 color: Colors.white,
               ),
               title: Text(
-                '${videoSeekStep.inSeconds * combo} seconds',
+                '{count} seconds'.trArgs({
+                  'count': '${videoSeekStep.inSeconds * combo}',
+                }),
                 style: const TextStyle(color: Colors.white),
               ),
             ),

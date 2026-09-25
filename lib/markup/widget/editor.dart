@@ -145,22 +145,22 @@ class _DTextEditorBarState extends State<DTextEditorBar> {
           IconButton(
             icon: const Icon(Icons.subject),
             onPressed: () => enclose('section,expanded=', endTag: 'section'),
-            tooltip: 'Section',
+            tooltip: 'Section'.tr,
           ),
           IconButton(
             icon: const Icon(Icons.format_quote),
             onPressed: () => enclose('quote'),
-            tooltip: 'Quote',
+            tooltip: 'Quote'.tr,
           ),
           IconButton(
             icon: const Icon(Icons.code),
             onPressed: () => enclose('code'),
-            tooltip: 'Code',
+            tooltip: 'Code'.tr,
           ),
           IconButton(
             icon: const Icon(Icons.warning),
             onPressed: () => enclose('spoiler'),
-            tooltip: 'Spoiler',
+            tooltip: 'Spoiler'.tr,
           ),
         ],
       );
@@ -173,22 +173,22 @@ class _DTextEditorBarState extends State<DTextEditorBar> {
           IconButton(
             icon: const Icon(Icons.format_bold),
             onPressed: () => enclose('b'),
-            tooltip: 'Bold',
+            tooltip: 'Bold'.tr,
           ),
           IconButton(
             icon: const Icon(Icons.format_italic),
             onPressed: () => enclose('i'),
-            tooltip: 'Italic',
+            tooltip: 'Italic'.tr,
           ),
           IconButton(
             icon: const Icon(Icons.format_underlined),
             onPressed: () => enclose('u'),
-            tooltip: 'Underlined',
+            tooltip: 'Underlined'.tr,
           ),
           IconButton(
             icon: const Icon(Icons.format_strikethrough),
             onPressed: () => enclose('s'),
-            tooltip: 'Strikethrough',
+            tooltip: 'Strikethrough'.tr,
           ),
         ],
       );

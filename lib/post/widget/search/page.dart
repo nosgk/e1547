@@ -45,6 +45,8 @@ class PostsPage extends StatelessWidget {
                         children: [
                           ...drawerActions,
                           if (drawerActions.isNotEmpty) const Divider(),
+                          const PostSearchTools(),
+                          const PostPlayModes(),
                           if (context
                                   .watch<PostParamsController>()
                                   .value

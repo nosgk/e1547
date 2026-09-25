@@ -58,7 +58,7 @@ abstract final class Share {
       if (!context.mounted) return;
 
       String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save file',
+        dialogTitle: 'Save file'.tr,
         fileName: basename(path),
       );
       if (outputFile == null) return;
@@ -67,7 +67,7 @@ abstract final class Share {
       messenger.showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 1),
-          content: Text('File saved as ${basename(outputFile)}'),
+          content: Text('File saved as {name}'.trArgs({'name': basename(outputFile)})),
         ),
       );
     }
@@ -77,9 +77,9 @@ abstract final class Share {
     ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: text));
     messenger.showSnackBar(
-      const SnackBar(
-        duration: Duration(seconds: 1),
-        content: Text('Copied to clipboard'),
+      SnackBar(
+        duration: const Duration(seconds: 1),
+        content: Text('Copied to clipboard'.tr),
       ),
     );
   }

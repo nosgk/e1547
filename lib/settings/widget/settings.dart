@@ -461,6 +461,38 @@ class SettingsPage extends StatelessWidget {
                       },
                     ),
                   ),
+                 ValueListenableBuilder<int>(
+                   valueListenable: settings.downloadConcurrency,
+                   builder: (context, value, child) => SliderSettingTile(
+                     title: 'Download threads'.tr,
+                     icon: Icons.speed,
+                     min: 1,
+                     max: 8,
+                     divisions: 7,
+                     value: value.clamp(1, 8).toDouble(),
+                     format: (value) => '${value.round()}',
+                     parse: (text) => int.tryParse(text)?.toDouble(),
+                     onChanged: (value) =>
+                         settings.downloadConcurrency.value = value.round(),
+                     onReset: () => settings.downloadConcurrency.value = 4,
+                   ),
+                 ),
+                 ValueListenableBuilder<bool>(
+                   valueListenable: settings.clipboardLinkPrompt,
+                   builder: (context, value, child) => SwitchListTile(
+                     title: Text('Clipboard links'.tr),
+                     subtitle: Text(
+                       value
+                           ? 'ask to open copied e621 links'.tr
+                           : 'ignore copied links'.tr,
+                     ),
+                     secondary: const Icon(Icons.content_paste_go),
+                     value: value,
+                     onChanged: (value) =>
+                         settings.clipboardLinkPrompt.value = value,
+                   ),
+                 ),
+ 
                 const MediaCacheTile(),
                 ValueListenableBuilder<bool>(
                   valueListenable: settings.upvoteFavs,

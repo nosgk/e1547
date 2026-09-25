@@ -178,7 +178,7 @@ class UserPage extends StatelessWidget {
                 appBar: appbar,
                 drawer: const RouterDrawer(),
                 endDrawer: ContextDrawer(
-                  title: const Text('Posts'),
+                  title: Text('Posts'.tr),
                   children: [
                     DrawerDenySwitch(filter: filter),
                     DrawerMultiTagCounter(filter: filter),
@@ -344,12 +344,12 @@ class _UserProfileActions extends StatelessWidget {
           },
         ),
         PopupMenuTile(
-          title: 'Browse',
+          title: 'Browse'.tr,
           icon: Icons.open_in_browser,
           value: () async => launch(context.read<Client>().withHost(user.link)),
         ),
         PopupMenuTile(
-          title: 'Report',
+          title: 'Report'.tr,
           icon: Icons.report,
           value: () => guardWithLogin(
             context: context,
@@ -360,11 +360,11 @@ class _UserProfileActions extends StatelessWidget {
                 ),
               );
             },
-            error: 'You must be logged in to report users!',
+            error: 'You must be logged in to report users!'.tr,
           ),
         ),
         PopupMenuTile(
-          title: blocked ? 'Unblock' : 'Block',
+          title: blocked ? 'Unblock'.tr : 'Block'.tr,
           icon: blocked ? Icons.check : Icons.block,
           value: () {
             if (blocked) {
@@ -474,9 +474,9 @@ class UserInfo extends StatelessWidget {
             Card(
               child: ExpandablePanel(
                 controller: Expandables.of(context, 'info'),
-                header: const ListTile(
-                  leading: Icon(Icons.info_outline),
-                  title: Text('Info'),
+                header: ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: Text('Info'.tr),
                 ),
                 collapsed: const SizedBox.shrink(),
                 expanded: Padding(
@@ -485,7 +485,7 @@ class UserInfo extends StatelessWidget {
                     children: [
                       info(
                         Icons.tag,
-                        'id',
+                        'id'.tr,
                         user.id.toString(),
                         onLongPress: () {
                           Clipboard.setData(
@@ -506,14 +506,14 @@ class UserInfo extends StatelessWidget {
                       if (user.stats case final stats?) ...[
                         info(
                           Icons.calendar_today,
-                          'joined',
+                          'joined'.tr,
                           stats.createdAt != null
                               ? DateFormatting.named(stats.createdAt!)
                               : null,
                         ),
                         info(
                           Icons.shield,
-                          'rank',
+                          'rank'.tr,
                           stats.levelString?.toLowerCase(),
                         ),
                         info(Icons.upload, 'posts'.tr, stats.postUploadCount),

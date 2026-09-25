@@ -43,6 +43,7 @@ class FavPage extends StatelessWidget {
                           title: Text('Posts'.tr),
                           children: [
                             const FavoriteOrderSwitch(),
+                            const PostPlayModes(),
                             const Divider(),
                             SearchPresetGroup(
                               title: 'Peeks'.tr,

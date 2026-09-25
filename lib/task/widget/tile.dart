@@ -46,16 +46,11 @@ class TaskTile extends StatelessWidget {
             controller: controller,
             isRunning: isRunning,
           ),
-          title: Text(
-            '${taskActionLabel(task.action, task.status)} post #${task.postId}',
-          ),
-          subtitle: Text(
-            RelativeTime.locale(
-              Localizations.localeOf(context),
-            ).format(task.completedAt ?? task.createdAt),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+           title: Text(
+             '${taskActionLabel(task.action, task.status)} post #${task.postId}',
+           ),
+           subtitle: _TaskSubtitle(task: task, controller: controller),
+ 
           trailing: InkResponse(
             onTap: () => layoutData.toggleSelection(task),
             radius: 24,
@@ -108,6 +103,37 @@ IconData taskActionIcon(TaskAction action) => switch (action) {
   TaskAction.favorite => Icons.favorite,
   TaskAction.unfavorite => Icons.heart_broken,
 };
+ 
+ class _TaskSubtitle extends StatelessWidget {
+   const _TaskSubtitle({required this.task, required this.controller});
+ 
+   final Task task;
+   final TasksController controller;
+ 
+   @override
+   Widget build(BuildContext context) {
+     final String when = RelativeTime.locale(
+       Localizations.localeOf(context),
+     ).format(task.completedAt ?? task.createdAt);
+     final ValueListenable<DownloadTransfer>? transfer = controller.transferOf(
+       task.id,
+     );
+     if (transfer == null) {
+       return Text(when, maxLines: 1, overflow: TextOverflow.ellipsis);
+     }
+     return ValueListenableBuilder<DownloadTransfer>(
+       valueListenable: transfer,
+       builder: (context, value, _) {
+         final int percent = (value.fraction * 100).round();
+         final String stats = value.received <= 0 && (value.total ?? 0) <= 0
+             ? when
+             : '$percent% · ${formatTransfer(value)}';
+         return Text(stats, maxLines: 1, overflow: TextOverflow.ellipsis);
+       },
+     );
+   }
+ }
+ 
 
 class TaskThumbnail extends StatelessWidget {
   const TaskThumbnail({

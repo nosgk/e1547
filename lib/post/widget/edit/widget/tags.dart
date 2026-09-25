@@ -96,7 +96,7 @@ class _TagsEditDisplayState extends State<TagsEditDisplay> {
       _logger.warn('Tag preview failed', null, e, stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading tag preview: $e')),
+          SnackBar(content: Text('Error loading tag preview: {error}'.trArgs({'error': '$e'}))),
         );
       }
     }
@@ -146,7 +146,7 @@ class _TagsEditDisplayState extends State<TagsEditDisplay> {
                           .toList(),
                     )
                   : Text(
-                      'No tags',
+                      'No tags'.tr,
                       style: TextStyle(
                         color: dimTextColor(context),
                         fontStyle: FontStyle.italic,
@@ -156,9 +156,9 @@ class _TagsEditDisplayState extends State<TagsEditDisplay> {
           ] else ...[
             TagInput(
               controller: widget.controller,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'space separated tags',
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hintText: 'space separated tags'.tr,
               ),
               readOnly: widget.enabled == false,
               autofocus: false,

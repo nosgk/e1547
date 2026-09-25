@@ -25,6 +25,7 @@ class PostFullscreen extends StatelessWidget {
                   if (Theme.of(context).isDesktop) {
                     return InteractiveViewer(
                       maxScale: 6,
+                      interactionEndFrictionCoefficient: 0.00002,
                       child: Center(
                         child: Hero(
                           tag: post.link,
@@ -54,6 +55,11 @@ class PostFullscreen extends StatelessWidget {
                         initialScale: PhotoViewComputedScale.contained,
                         minScale: PhotoViewComputedScale.contained,
                         maxScale: PhotoViewComputedScale.covered * 6,
+                        basePosition: Alignment.center,
+                        scaleStateCycle: (PhotoViewScaleState actual) =>
+                            actual == PhotoViewScaleState.initial
+                            ? PhotoViewScaleState.zoomedIn
+                            : PhotoViewScaleState.initial,
                         child: PostImageWidget(
                           fit: BoxFit.cover,
                           post: post,

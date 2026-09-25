@@ -193,6 +193,149 @@ class _AdvancedRequestSettingsPageState
     });
   }
 
+  List<({String name, String profile})> _savedPresets() {
+    final stored = context.read<Settings>().translatePresets.value;
+    try {
+      final decoded = jsonDecode(stored);
+      if (decoded is! List) return const [];
+      return [
+        for (final entry in decoded)
+          if (entry is Map && '${entry['name'] ?? ''}'.trim().isNotEmpty)
+            (
+              name: '${entry['name']}'.trim(),
+              profile: '${entry['profile'] ?? ''}',
+            ),
+      ];
+    } on FormatException {
+      return const [];
+    }
+  }
+
+  void _writePresets(List<({String name, String profile})> presets) {
+    context.read<Settings>().translatePresets.value = jsonEncode([
+      for (final preset in presets)
+        {'name': preset.name, 'profile': preset.profile},
+    ]);
+  }
+
+  Future<void> _saveCurrentPreset() async {
+    final nameController = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Save request preset'.tr),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: 'Preset name'.tr,
+            border: const OutlineInputBorder(),
+            isDense: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('CANCEL'.tr),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(context).pop(nameController.text.trim()),
+            child: Text('Save'.tr),
+          ),
+        ],
+      ),
+    );
+    nameController.dispose();
+    if (name == null || name.isEmpty || !mounted) return;
+    final presets = _savedPresets()
+        .where((preset) => preset.name != name)
+        .toList();
+    presets.add((name: name, profile: _profile.encode()));
+    _writePresets(presets);
+  }
+
+  Future<void> _managePresets() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ValueListenableBuilder<String>(
+          valueListenable: this.context.read<Settings>().translatePresets,
+          builder: (context, _, child) {
+            final presets = _savedPresets();
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.bookmark_add_outlined),
+                  title: Text('Save current request'.tr),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _saveCurrentPreset();
+                  },
+                ),
+                if (presets.isEmpty)
+                  ListTile(
+                    enabled: false,
+                    title: Text('No saved presets'.tr),
+                  )
+                else
+                  for (final preset in presets)
+                    ListTile(
+                      leading: const Icon(Icons.bookmark_outline),
+                      title: Text(preset.name),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        final decoded = TranslationRequestProfile.tryDecode(
+                          preset.profile,
+                        );
+                        if (decoded == null) return;
+                        _persist(decoded);
+                        setState(() {
+                          _profile = decoded;
+                          _url.text = decoded.url;
+                          _body.text = decoded.body;
+                          _parse.text = decoded.parsePath;
+                        });
+                      },
+                      onLongPress: () async {
+                        Navigator.of(context).pop();
+                        final confirmed = await showDialog<bool>(
+                          context: this.context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Delete preset'.tr),
+                            content: Text('Delete this preset?'.tr),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: Text('CANCEL'.tr),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: Text('Delete'.tr),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true || !mounted) return;
+                        _writePresets(
+                          _savedPresets()
+                              .where((entry) => entry.name != preset.name)
+                              .toList(),
+                        );
+                      },
+                    ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+
   // --- build -----------------------------------------------------------------
 
   @override
@@ -212,6 +355,11 @@ class _AdvancedRequestSettingsPageState
               tooltip: 'Restore defaults'.tr,
               icon: const Icon(Icons.restore),
               onPressed: _restorePreset,
+            ),
+            IconButton(
+              tooltip: 'Request presets'.tr,
+              icon: const Icon(Icons.bookmarks_outlined),
+              onPressed: _managePresets,
             ),
           ],
         ),

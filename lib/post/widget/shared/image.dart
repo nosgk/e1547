@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:e1547/files/files.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class PostImageWidget extends StatelessWidget {
@@ -113,6 +115,180 @@ class PostImageWidget extends StatelessWidget {
     );
   }
 }
+/// Cancels one image download after the tile stays outside the scroll
+/// viewport, then starts a fresh request if it comes back. The shared Dio
+/// client is not touched, so API calls keep running.
+class ViewportCachedImage extends StatefulWidget {
+  const ViewportCachedImage({
+    super.key,
+    required this.imageUrl,
+    this.fit,
+    this.fadeInDuration = Duration.zero,
+    this.fadeOutDuration = Duration.zero,
+    this.errorWidget,
+    this.progressIndicatorBuilder,
+    this.memCacheWidth,
+    this.memCacheHeight,
+    required this.cacheManager,
+    this.cancelWhenOffscreen = false,
+  });
+
+  final String imageUrl;
+  final BoxFit? fit;
+  final Duration fadeInDuration;
+  final Duration fadeOutDuration;
+  final LoadingErrorWidgetBuilder? errorWidget;
+  final ProgressIndicatorBuilder? progressIndicatorBuilder;
+  final int? memCacheWidth;
+  final int? memCacheHeight;
+  final BaseCacheManager cacheManager;
+
+  /// When false, the download is never cancelled. Detail and fullscreen
+  /// images stay on this path so a zoomed or paged view is not dropped.
+  final bool cancelWhenOffscreen;
+
+  /// How long a tile must stay off screen before its download is dropped.
+  /// A short flick past the tile does not cancel anything.
+  static const Duration cancelDelay = Duration(milliseconds: 350);
+
+  @override
+  State<ViewportCachedImage> createState() => _ViewportCachedImageState();
+}
+
+class _ViewportCachedImageState extends State<ViewportCachedImage> {
+  CancelToken? _token;
+  late String _cancelKey;
+  Timer? _cancelTimer;
+  int _generation = 0;
+  bool _onScreen = true;
+
+  @override
+  void dispose() {
+    _cancelTimer?.cancel();
+    final CancelToken? token = _token;
+    if (token != null) _release(token);
+    super.dispose();
+  }
+
+  /// Cancels now, but leaves the token in the map briefly so a GET that
+  /// already has the header can still pick it up. A cache hit never calls
+  /// GET, so the delayed drop keeps the map from growing.
+  void _release(CancelToken token) {
+    if (!token.isCancelled) token.cancel();
+    Timer(const Duration(seconds: 2), () => dropFileCacheCancelToken(token));
+  }
+
+  void _ensureToken() {
+    if (_token != null && !_token!.isCancelled) return;
+    final CancelToken token = CancelToken();
+    _token = token;
+    _cancelKey = stashFileCacheCancelToken(token);
+    _generation++;
+  }
+
+  void _onVisibility(bool visible) {
+    if (visible == _onScreen) return;
+    _onScreen = visible;
+    _cancelTimer?.cancel();
+    if (visible) {
+      final bool restart = _token?.isCancelled ?? false;
+      _ensureToken();
+      if (restart && mounted) setState(() {});
+      return;
+    }
+    final CancelToken? pending = _token;
+    _cancelTimer = Timer(ViewportCachedImage.cancelDelay, () {
+      if (!mounted || _onScreen || pending == null || pending.isCancelled) {
+        return;
+      }
+      _release(pending);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _ensureToken();
+    final String cancelKey = _cancelKey;
+    Widget image = CachedNetworkImage(
+      key: ValueKey(_generation),
+      fit: widget.fit,
+      fadeInDuration: widget.fadeInDuration,
+      fadeOutDuration: widget.fadeOutDuration,
+      imageUrl: widget.imageUrl,
+      errorWidget: widget.errorWidget,
+      progressIndicatorBuilder: widget.progressIndicatorBuilder,
+      memCacheWidth: widget.memCacheWidth,
+      memCacheHeight: widget.memCacheHeight,
+      cacheManager: widget.cacheManager,
+      httpHeaders: {fileCacheCancelHeader: cancelKey},
+    );
+    if (!widget.cancelWhenOffscreen) return image;
+    return _ViewportNotice(onVisibility: _onVisibility, child: image);
+  }
+}
+
+class _ViewportNotice extends StatefulWidget {
+  const _ViewportNotice({required this.onVisibility, required this.child});
+
+  final ValueChanged<bool> onVisibility;
+  final Widget child;
+
+  @override
+  State<_ViewportNotice> createState() => _ViewportNoticeState();
+}
+
+class _ViewportNoticeState extends State<_ViewportNotice> {
+  ScrollPosition? _position;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bind(Scrollable.maybeOf(context)?.position);
+    _report();
+  }
+
+  @override
+  void dispose() {
+    _position?.removeListener(_report);
+    super.dispose();
+  }
+
+  void _bind(ScrollPosition? next) {
+    if (identical(_position, next)) return;
+    _position?.removeListener(_report);
+    _position = next;
+    _position?.addListener(_report);
+  }
+
+  void _report() {
+    final bool? revealed = _revealed();
+    if (revealed == null) return;
+    widget.onVisibility(revealed);
+  }
+
+  /// Null when this image is not inside a scroll view, so a detail page or
+  /// fullscreen image is never cancelled for being "off screen".
+  bool? _revealed() {
+    final RenderObject? object = context.findRenderObject();
+    if (object is! RenderBox || !object.hasSize || !object.attached) {
+      return null;
+    }
+    final RenderAbstractViewport? viewport = RenderAbstractViewport.maybeOf(
+      object,
+    );
+    if (viewport is! RenderViewportBase || !viewport.hasSize) return null;
+    if (object.size.height <= 0) return null;
+    final RevealedOffset revealed = viewport.getOffsetToReveal(object, 0);
+    final double pixels = viewport.offset.pixels;
+    final double start = revealed.offset;
+    final double end = start + object.size.height;
+    return end > pixels && start < pixels + viewport.size.height;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 
 class RawPostImageWidget extends StatelessWidget {
   const RawPostImageWidget({
@@ -173,7 +349,7 @@ class RawPostImageWidget extends StatelessWidget {
       memCacheWidth = cacheSize;
     }
 
-    return CachedNetworkImage(
+    return ViewportCachedImage(
       fit: fit,
       fadeInDuration: fades,
       fadeOutDuration: fades,
@@ -187,6 +363,7 @@ class RawPostImageWidget extends StatelessWidget {
       memCacheWidth: memCacheWidth,
       memCacheHeight: memCacheHeight,
       cacheManager: context.read<BaseCacheManager>(),
+      cancelWhenOffscreen: size == PostImageSize.preview,
     );
   }
 }
