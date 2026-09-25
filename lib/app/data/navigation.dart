@@ -99,7 +99,7 @@ final List<RouterDrawerDestination> rootDestintations = [
   ),
   NamedRouterDrawerDestination(
     path: '/tasks',
-    name: 'Tasks',
+    name: 'Downloads',
     icon: const Icon(Icons.task_alt),
     builder: (context) => const TasksPage(),
     enabled: _nonRecursive<TasksPage>,

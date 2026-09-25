@@ -46,27 +46,61 @@ class TaskTile extends StatelessWidget {
             controller: controller,
             isRunning: isRunning,
           ),
-           title: Text(
-             '${taskActionLabel(task.action, task.status)} post #${task.postId}',
-           ),
-           subtitle: _TaskSubtitle(task: task, controller: controller),
- 
-          trailing: InkResponse(
-            onTap: () => layoutData.toggleSelection(task),
-            radius: 24,
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: Center(
-                child: selecting
-                    ? TaskSelectionCheck(selected: selected)
-                    : TaskStateIndicator(
-                        status: task.status,
-                        isRunning: isRunning,
-                      ),
-              ),
-            ),
+          title: Text(
+            '${taskActionLabel(task.action, task.status)} post #${task.postId}',
           ),
+          subtitle: _TaskSubtitle(task: task, controller: controller),
+
+          trailing: selecting
+              ? InkResponse(
+                  onTap: () => layoutData.toggleSelection(task),
+                  radius: 24,
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: TaskSelectionCheck(selected: selected),
+                    ),
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (task.action == TaskAction.download &&
+                        (isRunning || controller.isPaused(task.id)))
+                      IconButton(
+                        tooltip: controller.isPaused(task.id)
+                            ? 'Resume'.tr
+                            : 'Pause'.tr,
+                        onPressed: () {
+                          if (controller.isPaused(task.id)) {
+                            controller.resume(task.id);
+                          } else {
+                            controller.pause(task.id);
+                          }
+                        },
+                        icon: Icon(
+                          controller.isPaused(task.id)
+                              ? Icons.play_arrow
+                              : Icons.pause,
+                        ),
+                      ),
+                    InkResponse(
+                      onTap: () => layoutData.toggleSelection(task),
+                      radius: 24,
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Center(
+                          child: TaskStateIndicator(
+                            status: task.status,
+                            isRunning: isRunning,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
@@ -103,37 +137,36 @@ IconData taskActionIcon(TaskAction action) => switch (action) {
   TaskAction.favorite => Icons.favorite,
   TaskAction.unfavorite => Icons.heart_broken,
 };
- 
- class _TaskSubtitle extends StatelessWidget {
-   const _TaskSubtitle({required this.task, required this.controller});
- 
-   final Task task;
-   final TasksController controller;
- 
-   @override
-   Widget build(BuildContext context) {
-     final String when = RelativeTime.locale(
-       Localizations.localeOf(context),
-     ).format(task.completedAt ?? task.createdAt);
-     final ValueListenable<DownloadTransfer>? transfer = controller.transferOf(
-       task.id,
-     );
-     if (transfer == null) {
-       return Text(when, maxLines: 1, overflow: TextOverflow.ellipsis);
-     }
-     return ValueListenableBuilder<DownloadTransfer>(
-       valueListenable: transfer,
-       builder: (context, value, _) {
-         final int percent = (value.fraction * 100).round();
-         final String stats = value.received <= 0 && (value.total ?? 0) <= 0
-             ? when
-             : '$percent% · ${formatTransfer(value)}';
-         return Text(stats, maxLines: 1, overflow: TextOverflow.ellipsis);
-       },
-     );
-   }
- }
- 
+
+class _TaskSubtitle extends StatelessWidget {
+  const _TaskSubtitle({required this.task, required this.controller});
+
+  final Task task;
+  final TasksController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final String when = RelativeTime.locale(
+      Localizations.localeOf(context),
+    ).format(task.completedAt ?? task.createdAt);
+    final ValueListenable<DownloadTransfer>? transfer = controller.transferOf(
+      task.id,
+    );
+    if (transfer == null) {
+      return Text(when, maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
+    return ValueListenableBuilder<DownloadTransfer>(
+      valueListenable: transfer,
+      builder: (context, value, _) {
+        final int percent = (value.fraction * 100).round();
+        final String stats = value.received <= 0 && (value.total ?? 0) <= 0
+            ? when
+            : '$percent% · ${formatTransfer(value)}';
+        return Text(stats, maxLines: 1, overflow: TextOverflow.ellipsis);
+      },
+    );
+  }
+}
 
 class TaskThumbnail extends StatelessWidget {
   const TaskThumbnail({

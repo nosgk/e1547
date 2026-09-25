@@ -59,18 +59,19 @@ class Settings extends NotifiedSettings {
     key: 'downloadPath',
     initialValue: null,
   );
-   /// How many download tasks may run at once (1–8).
-   late final ValueNotifier<int> downloadConcurrency = createSetting(
-     key: 'downloadConcurrency',
-     initialValue: 4,
-   );
- 
-   /// Offer to open an e621/e926 link found on the clipboard when the app resumes.
-   late final ValueNotifier<bool> clipboardLinkPrompt = createSetting<bool>(
-     key: 'clipboardLinkPrompt',
-     initialValue: true,
-   );
- 
+
+  /// How many download tasks may run at once (1–8).
+  late final ValueNotifier<int> downloadConcurrency = createSetting(
+    key: 'downloadConcurrency',
+    initialValue: 4,
+  );
+
+  /// Offer to open an e621/e926 link found on the clipboard when the app resumes.
+  late final ValueNotifier<bool> clipboardLinkPrompt = createSetting<bool>(
+    key: 'clipboardLinkPrompt',
+    initialValue: true,
+  );
+
   late final ValueNotifier<bool> muteVideos = createSetting<bool>(
     key: 'muteVideos',
     initialValue: true,

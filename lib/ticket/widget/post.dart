@@ -98,7 +98,9 @@ class _PostReportScreenState extends State<PostReportScreen> {
         messenger.showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 1),
-            content: Text('Reported post #{id}'.trArgs({'id': '${widget.post.id}'})),
+            content: Text(
+              'Reported post #{id}'.trArgs({'id': '${widget.post.id}'}),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );

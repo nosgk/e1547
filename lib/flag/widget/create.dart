@@ -54,7 +54,9 @@ class _PostFlagScreenState extends State<PostFlagScreen> {
         messenger.showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 1),
-            content: Text('Flagged post #{id}'.trArgs({'id': '${widget.post.id}'})),
+            content: Text(
+              'Flagged post #{id}'.trArgs({'id': '${widget.post.id}'}),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );

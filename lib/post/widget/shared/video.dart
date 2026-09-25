@@ -147,9 +147,12 @@ class _VideoBarState extends State<VideoBar> {
         });
       }),
       widget.player.stream.position.listen((event) {
-        setState(() {
-          if (!seeking) position = event;
-        });
+        if (seeking) return;
+        if (position.inSeconds == event.inSeconds &&
+            (event - position).inMilliseconds.abs() < 250) {
+          return;
+        }
+        setState(() => position = event);
       }),
       widget.player.stream.duration.listen((event) {
         setState(() {
@@ -163,6 +166,7 @@ class _VideoBarState extends State<VideoBar> {
       }),
     ]);
   }
+
   @override
   void dispose() {
     for (final s in subscriptions) {
@@ -195,9 +199,13 @@ class _VideoBarState extends State<VideoBar> {
 
   Future<void> _saveFrame() async {
     final messenger = ScaffoldMessenger.of(context);
-    final Uint8List? bytes = await widget.player.screenshot(format: 'image/png');
+    final Uint8List? bytes = await widget.player.screenshot(
+      format: 'image/png',
+    );
     if (!mounted || bytes == null) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not capture frame'.tr)));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not capture frame'.tr)),
+      );
       return;
     }
     final File file = File(
@@ -208,7 +216,9 @@ class _VideoBarState extends State<VideoBar> {
       await FileDownloader.downloadImage(file: file, directory: null);
       messenger.showSnackBar(SnackBar(content: Text('Frame saved'.tr)));
     } on FileDownloadException {
-      messenger.showSnackBar(SnackBar(content: Text('Could not save frame'.tr)));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not save frame'.tr)),
+      );
     } finally {
       if (file.existsSync()) await file.delete();
     }
@@ -224,8 +234,6 @@ class _VideoBarState extends State<VideoBar> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const VideoServiceVolumeControl(),
                   const SizedBox(width: 4),
@@ -264,24 +272,6 @@ class _VideoBarState extends State<VideoBar> {
                   ),
                   Text(duration.toString().substring(2, 7)),
                   const SizedBox(width: 4),
-                  IconButton(
-                    tooltip: 'Previous frame'.tr,
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.skip_previous),
-                    onPressed: () => _stepFrame(-1),
-                  ),
-                  IconButton(
-                    tooltip: 'Next frame'.tr,
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.skip_next),
-                    onPressed: () => _stepFrame(1),
-                  ),
-                  IconButton(
-                    tooltip: 'Save frame'.tr,
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    onPressed: _saveFrame,
-                  ),
                   InkWell(
                     onTap: Navigator.of(context).maybePop,
                     child: Padding(
@@ -295,6 +285,29 @@ class _VideoBarState extends State<VideoBar> {
                   ),
                 ],
               ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  tooltip: 'Previous frame'.tr,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.skip_previous),
+                  onPressed: () => _stepFrame(-1),
+                ),
+                IconButton(
+                  tooltip: 'Next frame'.tr,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.skip_next),
+                  onPressed: () => _stepFrame(1),
+                ),
+                IconButton(
+                  tooltip: 'Save frame'.tr,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  onPressed: _saveFrame,
+                ),
+              ],
             ),
           ],
         ),

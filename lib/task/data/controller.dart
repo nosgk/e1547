@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:dio/dio.dart';
 import 'package:e1547/client/client.dart';
+import 'package:e1547/files/files.dart';
 import 'package:e1547/logs/logs.dart';
 import 'package:e1547/post/post.dart' show PostQuerying;
 import 'package:e1547/settings/settings.dart';
@@ -50,29 +52,36 @@ class TasksController extends ChangeNotifier {
   final Set<int> _runningIds = {};
   bool isRunning(int taskId) => _runningIds.contains(taskId);
 
-   /// Sum of in-flight progress across all running tasks (0..n), driving the
-   /// aggregate bubble progress.
-   final ValueNotifier<double> currentProgress = ValueNotifier(0);
- 
- 
-   /// Per-task download progress, so each running tile updates on its own
-   /// without rebuilding the others.
-   final Map<int, ValueNotifier<double>> _progress = {};
-   ValueListenable<double>? progressOf(int taskId) => _progress[taskId];
- 
-   /// Bytes received / expected and an instantaneous rate, for the task list.
-   final Map<int, ValueNotifier<DownloadTransfer>> _transfers = {};
-   ValueListenable<DownloadTransfer>? transferOf(int taskId) =>
-       _transfers[taskId];
- 
-   static const int _minDownloadWorkers = 1;
-   static const int _maxDownloadWorkers = 8;
- 
-   int get _downloadWorkerCount =>
-       settings.downloadConcurrency.value.clamp(
-         _minDownloadWorkers,
-         _maxDownloadWorkers,
-       );
+  final Set<int> _paused = {};
+  bool isPaused(int taskId) => _paused.contains(taskId);
+
+  /// Ids whose in-flight download has been told to stop, but whose worker
+  /// has not left [_process] yet. [pause] waits on these before requeueing.
+  final Map<int, Completer<void>> _pauseGates = {};
+
+  final Map<int, CancelToken> _downloadCancels = {};
+
+  /// Sum of in-flight progress across all running tasks (0..n), driving the
+  /// aggregate bubble progress.
+  final ValueNotifier<double> currentProgress = ValueNotifier(0);
+
+  /// Per-task download progress, so each running tile updates on its own
+  /// without rebuilding the others.
+  final Map<int, ValueNotifier<double>> _progress = {};
+  ValueListenable<double>? progressOf(int taskId) => _progress[taskId];
+
+  /// Bytes received / expected and an instantaneous rate, for the task list.
+  final Map<int, ValueNotifier<DownloadTransfer>> _transfers = {};
+  ValueListenable<DownloadTransfer>? transferOf(int taskId) =>
+      _transfers[taskId];
+
+  static const int _minDownloadWorkers = 1;
+  static const int _maxDownloadWorkers = 8;
+
+  int get _downloadWorkerCount => settings.downloadConcurrency.value.clamp(
+    _minDownloadWorkers,
+    _maxDownloadWorkers,
+  );
   StreamSubscription<List<Task>>? _activeSub;
   Timer? _hideTimer;
   bool _seeded = false;
@@ -80,10 +89,9 @@ class TasksController extends ChangeNotifier {
   bool _drainingApi = false;
   bool _disposed = false;
 
-   // Downloads hit the CDN, which is free of the API rate limit, so they run
-   // concurrently. Favorites and unfavorites stay on a single sequential lane.
-   // Worker count comes from [Settings.downloadConcurrency].
- 
+  // Downloads hit the CDN, which is free of the API rate limit, so they run
+  // concurrently. Favorites and unfavorites stay on a single sequential lane.
+  // Worker count comes from [Settings.downloadConcurrency].
 
   // Kept separate from the controller's own listeners so toggling doesn't
   // mark Provider scopes dirty mid-build.
@@ -205,10 +213,9 @@ class TasksController extends ChangeNotifier {
     if (_drainingDownloads || _disposed) return;
     _drainingDownloads = true;
     try {
-       await Future.wait([
-         for (int i = 0; i < _downloadWorkerCount; i++) _downloadWorker(),
-       ]);
- 
+      await Future.wait([
+        for (int i = 0; i < _downloadWorkerCount; i++) _downloadWorker(),
+      ]);
     } finally {
       _drainingDownloads = false;
     }
@@ -242,20 +249,22 @@ class TasksController extends ChangeNotifier {
     }
   }
 
-   Future<void> _process(Task task) async {
-     _runningIds.add(task.id);
-     _progress[task.id] = ValueNotifier<double>(0);
-     if (task.action == TaskAction.download) {
-       _transfers[task.id] = ValueNotifier(const DownloadTransfer());
-     }
-     notifyListeners();
- 
+  Future<void> _process(Task task) async {
+    _runningIds.add(task.id);
+    _progress[task.id] = ValueNotifier<double>(0);
+    if (task.action == TaskAction.download) {
+      _transfers[task.id] = ValueNotifier(const DownloadTransfer());
+    }
+    notifyListeners();
+
     try {
       await _runOne(task);
       final TaskStatus? current = await repository.readStatus(task.id);
       if (current == TaskStatus.running) {
         await repository.markCompleted(task.id);
       }
+    } on _DownloadPaused {
+      // Pause already put the task back on the queue.
     } on Object catch (e, s) {
       _logger.warn(
         'Task {task} ({action}) failed',
@@ -268,11 +277,12 @@ class TasksController extends ChangeNotifier {
         await repository.markFailed(task.id, e.toString());
       }
     } finally {
-      _runningDone++;
-       _runningIds.remove(task.id);
-       _progress.remove(task.id)?.dispose();
-       _transfers.remove(task.id)?.dispose();
- 
+      if (!_paused.contains(task.id)) _runningDone++;
+      _runningIds.remove(task.id);
+      _downloadCancels.remove(task.id);
+      _progress.remove(task.id)?.dispose();
+      _transfers.remove(task.id)?.dispose();
+      _pauseGates.remove(task.id)?.complete();
       _recomputeProgress();
       notifyListeners();
     }
@@ -336,55 +346,93 @@ class TasksController extends ChangeNotifier {
         'Download task missing file metadata (post #${task.postId})',
       );
     }
-     final ValueNotifier<double>? progress = _progress[task.id];
-     final ValueNotifier<DownloadTransfer>? transfer = _transfers[task.id];
-     final Stopwatch clock = Stopwatch()..start();
-     int lastBytes = 0;
-     int lastMillis = 0;
-     await for (final response in cacheManager.getFileStream(
-       url,
-       withProgress: true,
-     )) {
-       if (response is DownloadProgress) {
-         final int received = response.downloaded;
-         final int? total = response.totalSize;
-         final double fraction = total != null && total > 0
-             ? (received / total).clamp(0, 1)
-             : (response.progress ?? 0).clamp(0, 1);
-         progress?.value = fraction;
-         final int elapsed = clock.elapsedMilliseconds;
-         final int deltaMillis = elapsed - lastMillis;
-         double rate = transfer?.value.bytesPerSecond ?? 0;
-         if (deltaMillis >= 250 && received >= lastBytes) {
-           rate = (received - lastBytes) * 1000 / deltaMillis;
-           lastBytes = received;
-           lastMillis = elapsed;
-         }
-         transfer?.value = DownloadTransfer(
-           received: received,
-           total: total,
-           bytesPerSecond: rate,
-         );
-         _recomputeProgress();
- 
-      } else if (response is FileInfo) {
-        try {
-          await FileDownloader.downloadImage(
-            file: response.file,
-            directory: settings.downloadPath.value,
-            folderName: AppInfo.instance.appName,
-            fileName: fileName,
-            onDirectoryChanged: (p) => settings.downloadPath.value = p,
+    final ValueNotifier<double>? progress = _progress[task.id];
+    final ValueNotifier<DownloadTransfer>? transfer = _transfers[task.id];
+    final CancelToken cancelToken = CancelToken();
+    _downloadCancels[task.id] = cancelToken;
+    _pauseGates.putIfAbsent(task.id, Completer<void>.new);
+    final String cancelKey = stashFileCacheCancelToken(cancelToken);
+    final Stopwatch clock = Stopwatch()..start();
+    int lastBytes = 0;
+    int lastMillis = 0;
+    try {
+      await for (final response in cacheManager.getFileStream(
+        url,
+        headers: {fileCacheCancelHeader: cancelKey},
+        withProgress: true,
+      )) {
+        if (response is DownloadProgress) {
+          final int received = response.downloaded;
+          final int? total = response.totalSize;
+          final double fraction = total != null && total > 0
+              ? (received / total).clamp(0, 1)
+              : (response.progress ?? 0).clamp(0, 1);
+          progress?.value = fraction;
+          final int elapsed = clock.elapsedMilliseconds;
+          final int deltaMillis = elapsed - lastMillis;
+          double rate = transfer?.value.bytesPerSecond ?? 0;
+          if (deltaMillis >= 250 && received >= lastBytes) {
+            rate = (received - lastBytes) * 1000 / deltaMillis;
+            lastBytes = received;
+            lastMillis = elapsed;
+          }
+          transfer?.value = DownloadTransfer(
+            received: received,
+            total: total,
+            bytesPerSecond: rate,
           );
-        } on FileDownloadException {
-          rethrow;
-        } on Exception catch (e) {
-          throw FileDownloadException.from(e);
+          _recomputeProgress();
+        } else if (response is FileInfo) {
+          try {
+            await FileDownloader.downloadImage(
+              file: response.file,
+              directory: settings.downloadPath.value,
+              folderName: AppInfo.instance.appName,
+              fileName: fileName,
+              onDirectoryChanged: (p) => settings.downloadPath.value = p,
+            );
+          } on FileDownloadException {
+            rethrow;
+          } on Exception catch (e) {
+            throw FileDownloadException.from(e);
+          }
+          return;
         }
-        return;
       }
+    } on DioException catch (error) {
+      if (CancelToken.isCancel(error) || _paused.contains(task.id)) {
+        throw const _DownloadPaused();
+      }
+      rethrow;
+    } finally {
+      Timer(
+        const Duration(seconds: 2),
+        () => dropFileCacheCancelToken(cancelToken),
+      );
     }
     throw FileDownloadException('Download stream ended without file');
+  }
+
+  /// Stops the in-flight file GET and puts the task back on the queue.
+  /// Continuing starts the download again; there is no byte-range resume.
+  /// The row stays `running` until this worker leaves, so another worker
+  /// cannot claim it in between.
+  Future<void> pause(int taskId) async {
+    if (!_runningIds.contains(taskId) || _paused.contains(taskId)) return;
+    _paused.add(taskId);
+    final Completer<void>? gate = _pauseGates[taskId];
+    final CancelToken? token = _downloadCancels[taskId];
+    if (token != null && !token.isCancelled) token.cancel('paused');
+    notifyListeners();
+    if (gate != null) await gate.future;
+    if (_disposed || !_paused.contains(taskId)) return;
+    await repository.requeue(taskId);
+  }
+
+  Future<void> resume(int taskId) async {
+    if (!_paused.remove(taskId)) return;
+    notifyListeners();
+    _kick();
   }
 
   Future<void> cancel(int taskId) => repository.markCanceled(taskId);
@@ -486,17 +534,21 @@ class TasksController extends ChangeNotifier {
     _disposed = true;
     _activeSub?.cancel();
     _hideTimer?.cancel();
-     for (final notifier in _progress.values) {
-       notifier.dispose();
-     }
-     for (final notifier in _transfers.values) {
-       notifier.dispose();
-     }
-     _progress.clear();
-     _transfers.clear();
- 
+    for (final notifier in _progress.values) {
+      notifier.dispose();
+    }
+    for (final notifier in _transfers.values) {
+      notifier.dispose();
+    }
+    _progress.clear();
+    _transfers.clear();
+
     currentProgress.dispose();
     suppressBubble.dispose();
     super.dispose();
   }
+}
+
+class _DownloadPaused implements Exception {
+  const _DownloadPaused();
 }

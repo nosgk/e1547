@@ -44,10 +44,7 @@ class HomePage extends StatelessWidget {
                       drawer: const RouterDrawer(),
                       endDrawer: ContextDrawer(
                         title: Text('Posts'.tr),
-                        children: const [
-                          PostSearchTools(),
-                          PostPlayModes(),
-                        ],
+                        children: const [PostSearchTools(), PostPlayModes()],
                       ),
                       body: LimitedWidthLayout(
                         child: ListenableBuilder(

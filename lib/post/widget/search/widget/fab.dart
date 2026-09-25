@@ -38,5 +38,4 @@ class PostsPageFab extends StatelessWidget {
     if (!site) return false;
     return const E621LinkParser().open(context, trimmed);
   }
-
 }

@@ -115,6 +115,7 @@ class PostImageWidget extends StatelessWidget {
     );
   }
 }
+
 /// Cancels one image download after the tile stays outside the scroll
 /// viewport, then starts a fresh request if it comes back. The shared Dio
 /// client is not touched, so API calls keep running.
@@ -288,7 +289,6 @@ class _ViewportNoticeState extends State<_ViewportNotice> {
   @override
   Widget build(BuildContext context) => widget.child;
 }
-
 
 class RawPostImageWidget extends StatelessWidget {
   const RawPostImageWidget({

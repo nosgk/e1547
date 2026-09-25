@@ -267,6 +267,19 @@ class TaskRepository extends DatabaseAccessor<GeneratedDatabase>
             ..where((tbl) => tbl.status.equals(TaskStatus.running.name)))
           .write(const TaskCompanion(status: Value(TaskStatus.pending)));
 
+  /// Puts one in-progress task back on the queue without marking it canceled.
+  Future<void> requeue(int id) =>
+      (update(tasksTable)
+            ..where((tbl) => tbl.id.equals(id))
+            ..where((tbl) => tbl.status.equals(TaskStatus.running.name)))
+          .write(
+            const TaskCompanion(
+              status: Value(TaskStatus.pending),
+              error: Value(null),
+              completedAt: Value(null),
+            ),
+          );
+
   Future<void> remove(int id) => removeAll([id]);
 
   Future<void> removeAll(List<int>? ids, {int? identity}) {

@@ -228,7 +228,8 @@ class _DownloadProgressNotifierState extends State<DownloadProgressNotifier> {
     final running = controller.active
         .where(
           (task) =>
-              task.action == TaskAction.download && controller.isRunning(task.id),
+              task.action == TaskAction.download &&
+              controller.isRunning(task.id),
         )
         .map((task) => task.id)
         .toSet();
@@ -260,7 +261,8 @@ class _DownloadProgressNotifierState extends State<DownloadProgressNotifier> {
     final ids = controller.active
         .where(
           (task) =>
-              task.action == TaskAction.download && controller.isRunning(task.id),
+              task.action == TaskAction.download &&
+              controller.isRunning(task.id),
         )
         .map((task) => task.id)
         .toList();
@@ -298,11 +300,8 @@ class _DownloadProgressNotifierState extends State<DownloadProgressNotifier> {
     await plugin.show(
       id: _id,
       title: 'Downloading'.tr,
-      body: '$count · ${formatTransfer(DownloadTransfer(
-        received: received,
-        total: known ? total : null,
-        bytesPerSecond: rate,
-      ))}',
+      body:
+          '$count · ${formatTransfer(DownloadTransfer(received: received, total: known ? total : null, bytesPerSecond: rate))}',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           'downloads',

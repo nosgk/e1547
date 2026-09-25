@@ -21,7 +21,9 @@ class CommentReportScreen extends StatelessWidget {
         ),
       ),
       onSuccess: 'Reported comment #{id}'.trArgs({'id': '${comment.id}'}),
-      onFailure: 'Failed to report comment #{id}'.trArgs({'id': '${comment.id}'}),
+      onFailure: 'Failed to report comment #{id}'.trArgs({
+        'id': '${comment.id}',
+      }),
       previewBuilder: (context, isLoading) => Card(
         clipBehavior: Clip.antiAlias,
         child: ReportLoadingOverlay(

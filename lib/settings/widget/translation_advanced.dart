@@ -98,13 +98,47 @@ class _AdvancedRequestSettingsPageState
       case TranslationProvider.openai:
         settings.translateProfileOpenai.value = '';
     }
-    final preset = defaultRequestProfile(widget.provider);
+    final preset = widget.provider == TranslationProvider.openai
+        ? _openAiProfileFromSettings(settings)
+        : defaultRequestProfile(widget.provider);
     setState(() {
       _profile = preset;
       _url.text = preset.url;
       _body.text = preset.body;
       _parse.text = preset.parsePath;
     });
+  }
+
+  /// OpenAI restore keeps the user's base URL, model, key and prompts.
+  TranslationRequestProfile _openAiProfileFromSettings(Settings settings) {
+    final TranslationRequestProfile preset = defaultRequestProfile(
+      TranslationProvider.openai,
+    );
+    final String base = settings.translateBaseUrl.value.trim();
+    final String model = settings.translateModel.value.trim();
+    final String system = settings.translateSystemPrompt.value.trim();
+    final String user = settings.translateUserPrompt.value.trim();
+    final String key = settings.translateApiKey.value.trim();
+    return preset.copyWith(
+      url: '${base.isEmpty ? kDefaultOpenAiBaseUrl : base}/chat/completions',
+      body: kOpenAiBodyTemplate
+          .replaceAll('@model', model.isEmpty ? kDefaultOpenAiModel : model)
+          .replaceAll(
+            '@systemPrompt',
+            system.isEmpty ? kDefaultTranslationSystemPrompt : system,
+          )
+          .replaceAll(
+            '@userPrompt',
+            user.isEmpty ? kDefaultTranslationUserPrompt : user,
+          ),
+      headers: [
+        MapEntry(
+          'Authorization',
+          key.isEmpty ? 'Bearer @apiKey' : 'Bearer $key',
+        ),
+        const MapEntry('Accept', 'application/json'),
+      ],
+    );
   }
 
   TranslationConfig _buildConfig() {
@@ -275,10 +309,7 @@ class _AdvancedRequestSettingsPageState
                   },
                 ),
                 if (presets.isEmpty)
-                  ListTile(
-                    enabled: false,
-                    title: Text('No saved presets'.tr),
-                  )
+                  ListTile(enabled: false, title: Text('No saved presets'.tr))
                 else
                   for (final preset in presets)
                     ListTile(
@@ -334,7 +365,6 @@ class _AdvancedRequestSettingsPageState
       ),
     );
   }
-
 
   // --- build -----------------------------------------------------------------
 

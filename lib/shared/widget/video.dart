@@ -10,7 +10,12 @@ import 'package:rxdart/rxdart.dart';
 export 'package:media_kit_video/media_kit_video.dart';
 
 class VideoPlayer extends Player {
-  VideoPlayer({super.platformPlayer}) {
+  VideoPlayer({super.platformPlayer, PlayerConfiguration? configuration})
+    : super(
+        configuration:
+            configuration ??
+            const PlayerConfiguration(bufferSize: 8 * 1024 * 1024),
+      ) {
     _subscriptions.addAll([
       stream.videoParams.listen((event) {
         _hasParams = event.w != null && event.h != null;
@@ -31,7 +36,10 @@ class VideoPlayer extends Player {
     );
   }
 
-  late final VideoController _controller = VideoController(this);
+  late final VideoController _controller = VideoController(
+    this,
+    configuration: const VideoControllerConfiguration(scale: 0.75),
+  );
   VideoController get controller => _controller;
 
   final List<StreamSubscription> _subscriptions = [];

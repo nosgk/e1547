@@ -75,7 +75,6 @@ class _AppLinkHandlerState extends State<AppLinkHandler>
     super.dispose();
   }
 
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -126,6 +125,7 @@ class _AppLinkHandlerState extends State<AppLinkHandler>
       await launch(text);
     }
   }
+
   @override
   Widget build(BuildContext context) => widget.child;
 }

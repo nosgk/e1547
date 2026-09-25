@@ -104,9 +104,9 @@ class PostPlayModes extends StatelessWidget {
               children: [
                 Text(
                   game.description.tr,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: dimTextColor(context),
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
                 ),
                 Text(
                   game.terms.join(' '),
