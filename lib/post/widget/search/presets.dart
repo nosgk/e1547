@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -270,4 +271,31 @@ class SearchPresetGroup extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Adds [tags] to the quick-search presets. [name] is the remark (the
+/// translated tag when one exists). A preset with the same tags is replaced.
+Future<void> saveSearchPreset(
+  BuildContext context, {
+  required String name,
+  required String tags,
+}) async {
+  final trimmed = tags.trim();
+  if (trimmed.isEmpty) return;
+  final settings = context.read<Settings>();
+  final entries = parseSearchPresets(settings.explorePresets.value);
+  final index = entries.indexWhere((preset) => preset.tags == trimmed);
+  final updated = SearchPreset(name: name.trim(), tags: trimmed);
+  if (index >= 0) {
+    entries[index] = updated;
+  } else {
+    entries.add(updated);
+  }
+  settings.explorePresets.value = encodeSearchPresets(entries);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      duration: const Duration(seconds: 2),
+      content: Text(index >= 0 ? 'Preset updated'.tr : 'Preset saved'.tr),
+    ),
+  );
 }

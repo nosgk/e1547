@@ -62,7 +62,7 @@ class FakeE621 {
       '/pools/<id|[0-9]+>.json',
       (Request request, String id) => _json(_find(state.pools, id)),
     )
-    ..get('/tags.json', (Request request) => _list(state.tags, request))
+    ..get('/tags.json', _listTags)
     ..get(
       '/tag_aliases.json',
       (Request request) => _list(state.tagAliases, request),
@@ -203,6 +203,16 @@ class FakeE621 {
       posts = posts.where((e) => wanted.contains(e['id'])).toList();
     }
     return _json({'posts': _paginate(posts, query)});
+  }
+
+  /// `search[name_matches]` is an exact match, same as the live index.
+  Response _listTags(Request request) {
+    final query = request.url.queryParameters;
+    final name = query['search[name_matches]'];
+    final items = name == null || name.isEmpty
+        ? state.tags
+        : state.tags.where((tag) => tag['name'] == name).toList();
+    return _json(_paginate(items, query));
   }
 
   Response _listFavorites(Request request) {

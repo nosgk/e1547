@@ -1,3 +1,5 @@
+import 'package:cached_query_flutter/cached_query_flutter.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,7 +16,10 @@ void main() {
 
   setUp(() async {
     fake = await FakeE621.start();
-    client = TagClient(dio: dioFor(fake));
+    final dio = dioFor(fake);
+    dio.queryCache = CachedQuery.asNewInstance();
+    dio.queryIdentity = 1;
+    client = TagClient(dio: dio);
   });
 
   tearDown(() => fake.stop());
@@ -42,5 +47,22 @@ void main() {
     );
 
     expect(alias, recorded['consequent_name']);
+  });
+
+  test('reads the exact post count of an existing tag', () async {
+    final recorded = loadFixtureList('tags.json').first;
+    final tag = client.useCount(tag: recorded['name']! as String);
+
+    await tag.fetch();
+
+    expect(tag.state.data, recorded['post_count']);
+  });
+
+  test('reports no count for an unknown tag', () async {
+    final tag = client.useCount(tag: 'no_such_tag_here');
+
+    await tag.fetch();
+
+    expect(tag.state.data, isNull);
   });
 }

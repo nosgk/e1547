@@ -7,6 +7,7 @@ import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sub/flutter_sub.dart';
+import 'package:intl/intl.dart';
 
 class PostPageAppBar extends StatelessWidget implements PreferredSizeWidget {
   const PostPageAppBar({super.key, this.actions});
@@ -20,7 +21,12 @@ class PostPageAppBar extends StatelessWidget implements PreferredSizeWidget {
         map.isNotEmpty && map['order'] != 'rank' && map['fav'] == null;
 
     return DefaultAppBar(
-      title: const _PostPageTitle(),
+      title: const Row(
+        children: [
+          Flexible(child: _PostPageTitle()),
+          _PostSearchCount(),
+        ],
+      ),
       actions: [
         if (showInfo) const _PostPageInfoButton(),
         ...?actions,
@@ -68,11 +74,12 @@ class _PostPageTitle extends StatelessWidget {
     final tags = params.tags ?? '';
     final map = TagMap(tags);
 
-    if (map.isEmpty) return Text('Search'.tr);
-    if (map['order'] == 'rank') return Text('Hot'.tr);
+    if (map.isEmpty) return _title(context, 'Search'.tr);
+    if (map['order'] == 'rank') return _title(context, 'Hot'.tr);
     final fav = map['fav'];
     if (fav != null) {
-      return Text(
+      return _title(
+        context,
         fav == client.identity.username
             ? 'Favorites'.tr
             : "{fav}'s Favorites".trArgs({'fav': fav}),
@@ -85,15 +92,60 @@ class _PostPageTitle extends StatelessWidget {
     if (poolId != null) {
       return QueryBuilder(
         query: client.pools.useGet(id: poolId, vendored: true),
-        builder: (context, state) =>
-            Text(state.data != null ? tagToName(state.data!.name) : fallback),
+        builder: (context, state) => _title(
+          context,
+          state.data != null ? tagToName(state.data!.name) : fallback,
+        ),
       );
     }
 
     return SubFuture<Follow?>(
       keys: [tags, client],
       create: () => client.follows.getByTags(tags: tags),
-      builder: (context, snapshot) => Text(snapshot.data?.name ?? fallback),
+      builder: (context, snapshot) =>
+          _title(context, snapshot.data?.name ?? fallback),
+    );
+  }
+
+  Widget _title(BuildContext context, String text) =>
+      Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+}
+
+/// Exact total for the current search, beside the title. The tags index is
+/// the only source of exact totals, so this renders for single-tag searches
+/// and stays hidden otherwise (multi-tag queries, metatags).
+class _PostSearchCount extends StatelessWidget {
+  const _PostSearchCount();
+
+  @override
+  Widget build(BuildContext context) {
+    final map = TagMap(context.watch<PostParamsController>().value.tags);
+    if (map.length != 1 || map.values.single.isNotEmpty) {
+      return const SizedBox.shrink();
+    }
+    return QueryBuilder(
+      query: context.watch<Client>().tags.useCount(tag: map.keys.single),
+      builder: (context, state) {
+        final count = state.data;
+        if (count == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 140),
+            child: Text(
+              '{count} results'.trArgs({
+                'count': NumberFormat.decimalPattern().format(count),
+              }),
+              maxLines: 1,
+              overflow: TextOverflow.fade,
+              softWrap: false,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+            ),
+          ),
+        );
+      },
     );
   }
 }

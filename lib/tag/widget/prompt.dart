@@ -65,6 +65,7 @@ Future<void> showTagSearchPrompt({
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (canSearch) TagSearchActions(tag: tag),
+                  AddTagPresetAction(tag: tag),
                   TagListActions(tag: tag),
                 ],
               ),
@@ -130,6 +131,7 @@ class TagSearchInfoChild extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (canSearch) TagSearchActions(tag: tag),
+            AddTagPresetAction(tag: tag),
             TagListActions(tag: tag),
           ],
         ),
@@ -325,7 +327,7 @@ class _TagPostCountLineState extends State<TagPostCountLine> {
         return Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(
-            '{count} posts'.trArgs({
+            '{count} results'.trArgs({
               'count': NumberFormat.decimalPattern().format(tag.count),
             }),
             style: Theme.of(
@@ -334,6 +336,45 @@ class _TagPostCountLineState extends State<TagPostCountLine> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Saves this tag as a quick-search preset. The remark is the cached
+/// translation when one exists, otherwise the readable tag name. Saving
+/// the same tags again replaces the previous preset.
+class AddTagPresetAction extends StatelessWidget {
+  const AddTagPresetAction({super.key, required this.tag});
+
+  final String tag;
+
+  String _remark(BuildContext context) {
+    final readable = tagToName(tag);
+    final settings = trySettingsOf(context);
+    if (settings == null) return readable;
+    final cached = TranslationCache.instance.get(
+      [
+        settings.translateProvider.value.name,
+        if (settings.translateProvider.value == TranslationProvider.openai)
+          settings.translateModel.value
+        else
+          '',
+        settings.translateTargetLanguage.value,
+        readable,
+      ].join('|'),
+    );
+    final remark = cached?.trim();
+    if (remark == null || remark.isEmpty) return readable;
+    return remark;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.playlist_add),
+      tooltip: 'Add to search presets'.tr,
+      onPressed: () =>
+          saveSearchPreset(context, name: _remark(context), tags: tag),
     );
   }
 }
