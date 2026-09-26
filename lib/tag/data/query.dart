@@ -9,8 +9,9 @@ extension TagQuerying on TagClient {
   CachedQuery get queryCache => dio.queryCache!;
 
   /// Exact visible-post count of [tag] from the tags index, or null when
-  /// the tag does not exist. This is the same number the tag prompt's
-  /// count line shows; the posts index has no total of its own.
+  /// the tag does not exist. Unlike `/posts/count.json`, this is never
+  /// capped, which is why bare-tag searches prefer it; it is also the same
+  /// number the tag prompt's count line shows.
   Query<int?> useCount({required String tag}) => Query(
     cache: queryCache,
     key: [...queryKey, 'count', tag],

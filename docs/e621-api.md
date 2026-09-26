@@ -4,7 +4,7 @@
 >
 > **核对流程**：先查本文（§4/§5 是逐项实测过的结论）→ 参数细节查 OpenAPI 规范 → 字段语义查帮助页存档 → 仍有疑问就按 §6 实测。
 >
-> **禁止凭训练记忆写参数**：端点会下线（`/counts/posts.json` 就是这么翻车的）、参数名会记混。所有"应该是这样"都要落成 §6 的实测，实测结论回写本文并注明日期。
+> **禁止凭训练记忆写参数**：同功能的端点路径会换代（`/counts/posts.json` vs 现行 `/posts/count.json`，差一个词就是 404）、参数名会记混。所有"应该是这样"都要落成 §6 的实测，实测结论回写本文并注明日期。
 
 ## 1. 三份资料
 
@@ -70,7 +70,7 @@ rg -n -i "post_count|name_matches" Temp/api_doc.txt
 
 ### 3.3 搜索总数
 
-- **可用端点：`GET /posts/count.json?tags=<query>`**（OpenAPI `posts#count`，2026-09-26 副本 L9595）→ `{"count": N, "capped": bool}`
+- **可用端点：`GET /posts/count.json?tags=<query>`**（OpenAPI `posts#count`，2026-09-26 副本 L9593）→ `{"count": N, "capped": bool}`
   - **封顶**：结果数超过约 24 万时固定返回 `240001 & capped:true`（实测全站、anthro 448 万、dragon 46.8 万均如此）；真实精确值只有单标签能从 `/tags.json` 的 `post_count` 拿到
   - 未超限时精确（实测 `dragon canine` → 55,719；`pool:1` → 24）
   - metatag 都接受：`pool:`、`id:`、`fav:`（隐藏收藏返回 0 而非报错）、`order:`（order 不筛选，等于未过滤总数）
