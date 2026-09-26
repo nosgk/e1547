@@ -157,4 +157,12 @@ extension PostQuerying on PostClient {
       () => removeFavorite(postId),
     ),
   );
+
+  /// Total posts matching [tags], from `/posts/count.json`. `capped` marks
+  /// the server-side truncation at ~240k results.
+  Query<({int count, bool capped})> useCount({required String? tags}) => Query(
+    cache: queryCache,
+    key: [...queryKey, 'count', tags ?? ''],
+    queryFn: () => postCount(tags: tags),
+  );
 }

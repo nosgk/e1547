@@ -111,41 +111,61 @@ class _PostPageTitle extends StatelessWidget {
       Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
 }
 
-/// Exact total for the current search, beside the title. The tags index is
-/// the only source of exact totals, so this renders for single-tag searches
-/// and stays hidden otherwise (multi-tag queries, metatags).
+/// Total for the current search, beside the title. Bare tags resolve via
+/// the tags index (exact at any size); every other query uses the posts
+/// count endpoint, which truncates at ~240k — rendered as "{count}+".
 class _PostSearchCount extends StatelessWidget {
   const _PostSearchCount();
 
   @override
   Widget build(BuildContext context) {
     final map = TagMap(context.watch<PostParamsController>().value.tags);
-    if (map.length != 1 || map.values.single.isNotEmpty) {
+    // Nothing to count on an empty search, and order:rank (Hot) does not
+    // filter, so its total would just be the whole site.
+    if (map.isEmpty || map['order'] == 'rank') {
       return const SizedBox.shrink();
     }
-    return QueryBuilder(
-      query: context.watch<Client>().tags.useCount(tag: map.keys.single),
-      builder: (context, state) {
-        final count = state.data;
-        if (count == null) return const SizedBox.shrink();
-        return Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 140),
-            child: Text(
-              '{count} results'.trArgs({
-                'count': NumberFormat.decimalPattern().format(count),
-              }),
-              maxLines: 1,
-              overflow: TextOverflow.fade,
-              softWrap: false,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
-            ),
-          ),
-        );
-      },
+    final bare =
+        map.length == 1 &&
+        map.values.single.isEmpty &&
+        !map.keys.single.startsWith('-') &&
+        !map.keys.single.startsWith('~') &&
+        !map.keys.single.contains('(');
+    final client = context.watch<Client>();
+    return bare
+        ? QueryBuilder(
+            query: client.tags.useCount(tag: map.keys.single),
+            builder: (context, state) => _count(context, state.data, false),
+          )
+        : QueryBuilder(
+            query: client.posts.useCount(tags: map.toString()),
+            builder: (context, state) {
+              final data = state.data;
+              return _count(context, data?.count, data?.capped ?? false);
+            },
+          );
+  }
+
+  Widget _count(BuildContext context, int? value, bool capped) {
+    if (value == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 140),
+        child: Text(
+          '{count} results'.trArgs({
+            'count':
+                NumberFormat.decimalPattern().format(value) +
+                (capped ? '+' : ''),
+          }),
+          maxLines: 1,
+          overflow: TextOverflow.fade,
+          softWrap: false,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+        ),
+      ),
     );
   }
 }

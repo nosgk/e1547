@@ -206,4 +206,11 @@ void main() {
     expect(fake.requests.last.path, '/posts/$id/votes.json');
     expect(fake.requests.last.query, {'score': '1', 'no_unvote': 'true'});
   });
+
+  test('reads the total for a search', () async {
+    final total = loadFixtureList('posts.json').length;
+
+    expect(await client.postCount(tags: 'cat'), (count: total, capped: false));
+    expect(await client.postCount(tags: 'id:1,2'), (count: 2, capped: false));
+  });
 }

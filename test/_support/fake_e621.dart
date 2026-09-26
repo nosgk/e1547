@@ -35,6 +35,7 @@ class FakeE621 {
     ..get('/status.json', (Request request) => _json({'online': true}))
     ..get('/data/<path|.*>', _serveImage)
     ..get('/posts.json', _listPosts)
+    ..get('/posts/count.json', _countPosts)
     ..get('/favorites.json', _listFavorites)
     ..get('/posts/<id|[0-9]+>.json', _showPost)
     ..post('/posts/<id|[0-9]+>/votes.json', _votePost)
@@ -213,6 +214,15 @@ class FakeE621 {
         ? state.tags
         : state.tags.where((tag) => tag['name'] == name).toList();
     return _json(_paginate(items, query));
+  }
+
+  Response _countPosts(Request request) {
+    final tags = request.url.queryParameters['tags'] ?? '';
+    final ids = RegExp(r'^id:([\d,]+)$').firstMatch(tags);
+    final count = ids == null
+        ? state.posts.length
+        : ids.group(1)!.split(',').where((id) => id.isNotEmpty).length;
+    return _json({'count': count, 'capped': false});
   }
 
   Response _listFavorites(Request request) {

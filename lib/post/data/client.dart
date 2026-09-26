@@ -45,6 +45,27 @@ class PostClient {
       )
       .then(_filter);
 
+  /// Total posts matching [tags], from `/posts/count.json`. The server caps
+  /// the reported count at ~240k (`capped` marks that truncation); bare
+  /// tags have an exact alternative in the tags index.
+  Future<({int count, bool capped})> postCount({
+    String? tags,
+    CancelToken? cancelToken,
+  }) => dio
+      .get(
+        '/posts/count.json',
+        queryParameters: {'tags': tags ?? ''}.toQuery(),
+        cancelToken: cancelToken,
+      )
+      .then((response) {
+        final data = response.data;
+        final count = data is Map ? data['count'] : null;
+        if (count is! num) {
+          throw const FormatException('missing post count');
+        }
+        return (count: count.toInt(), capped: data['capped'] == true);
+      });
+
   /// Filters out "broken" posts.
   /// Flash posts are considered to be broken by default, since we will not be able to display them.
   /// Censored posts, which have contentious tags and are unavailable to anonymous users, are also considered broken.
