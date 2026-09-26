@@ -110,27 +110,21 @@ class _AdvancedRequestSettingsPageState
   }
 
   /// OpenAI restore keeps the user's base URL, model, key and prompts.
+  /// Prompts stay as `@systemPrompt` / `@userPrompt` so newlines and quotes
+  /// remain valid JSON; they are escaped when the request is rendered.
   TranslationRequestProfile _openAiProfileFromSettings(Settings settings) {
     final TranslationRequestProfile preset = defaultRequestProfile(
       TranslationProvider.openai,
     );
     final String base = settings.translateBaseUrl.value.trim();
     final String model = settings.translateModel.value.trim();
-    final String system = settings.translateSystemPrompt.value.trim();
-    final String user = settings.translateUserPrompt.value.trim();
     final String key = settings.translateApiKey.value.trim();
     return preset.copyWith(
       url: '${base.isEmpty ? kDefaultOpenAiBaseUrl : base}/chat/completions',
-      body: kOpenAiBodyTemplate
-          .replaceAll('@model', model.isEmpty ? kDefaultOpenAiModel : model)
-          .replaceAll(
-            '@systemPrompt',
-            system.isEmpty ? kDefaultTranslationSystemPrompt : system,
-          )
-          .replaceAll(
-            '@userPrompt',
-            user.isEmpty ? kDefaultTranslationUserPrompt : user,
-          ),
+      body: kOpenAiBodyTemplate.replaceAll(
+        '"@model"',
+        jsonEncode(model.isEmpty ? kDefaultOpenAiModel : model),
+      ),
       headers: [
         MapEntry(
           'Authorization',

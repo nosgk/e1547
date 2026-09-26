@@ -19,12 +19,12 @@ extension UserQuerying on UserClient {
     config: userCache.getConfig(vendored: vendored),
   );
 
-  Query<User> useGetByName({required String name, bool? vendored}) => Query(
+  Query<User?> useGetByName({required String name, bool? vendored}) => Query(
     cache: queryCache,
     key: [...queryKey, 'name', name],
     queryFn: () async {
       final user = await getByName(name: name);
-      userCache.set(user);
+      if (user != null) userCache.set(user);
       return user;
     },
     config: userCache.getConfig(vendored: vendored),

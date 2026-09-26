@@ -34,6 +34,12 @@ void main() {
 
     final user = await client.getByName(name: recorded['name']! as String);
 
-    expect(user.id, recorded['id']);
+    expect(user, isNotNull);
+    expect(user!.id, recorded['id']);
+    expect(user.about, isNotNull);
+  });
+
+  test('unknown names are missing instead of a 404', () async {
+    expect(await client.getByName(name: 'nobody'), isNull);
   });
 }

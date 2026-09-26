@@ -67,7 +67,7 @@ class FakeE621 {
       '/tag_aliases.json',
       (Request request) => _list(state.tagAliases, request),
     )
-    ..get('/users.json', (Request request) => _list(state.users, request))
+    ..get('/users.json', _listUsers)
     ..get('/users/<lookup>.json', _showUser)
     ..get('/wiki_pages.json', (Request request) => _list(state.wikis, request))
     ..get('/wiki_pages/<lookup>.json', _showWiki)
@@ -78,6 +78,16 @@ class FakeE621 {
   Response _list(List<Map<String, Object?>> items, Request request) =>
       _json(_paginate(items, request.url.queryParameters));
 
+  /// `search[name_matches]` is an exact match, same as the live index.
+  Response _listUsers(Request request) {
+    final query = request.url.queryParameters;
+    final name = query['search[name_matches]'];
+    final items = name == null || name.isEmpty
+        ? state.users
+        : state.users.where((user) => user['name'] == name).toList();
+    return _json(_paginate(items, query));
+  }
+
   Map<String, Object?> _find(List<Map<String, Object?>> items, String id) =>
       items.firstWhere(
         (e) => e['id'] == int.parse(id),
@@ -85,7 +95,7 @@ class FakeE621 {
       );
 
   Response _showUser(Request request, String lookup) =>
-      _json(_lookup([state.user], lookup, 'name'));
+      _json(_lookup(state.users, lookup, 'name'));
 
   Response _showWiki(Request request, String lookup) =>
       _json(_lookup(state.wikis, lookup, 'title'));

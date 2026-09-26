@@ -190,33 +190,35 @@ class SearchPresetGroup extends StatelessWidget {
     await onDelete(preset);
   }
 
-  Future<void> _menu(BuildContext context, SearchPreset preset) =>
-      showModalBottomSheet(
-        context: context,
-        builder: (context) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit_outlined),
-                title: Text('Edit'.tr),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _edit(context, preset);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: Text('Delete'.tr),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _delete(context, preset);
-                },
-              ),
-            ],
-          ),
+  Future<void> _menu(BuildContext context, SearchPreset preset) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text('Edit'.tr),
+              onTap: () => Navigator.of(sheetContext).pop('edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text('Delete'.tr),
+              onTap: () => Navigator.of(sheetContext).pop('delete'),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+    if (!context.mounted) return;
+    switch (result) {
+      case 'edit':
+        await _edit(context, preset);
+      case 'delete':
+        await _delete(context, preset);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
