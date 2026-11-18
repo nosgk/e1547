@@ -203,7 +203,7 @@ class FakeE621 {
       final wanted = ids.group(1)!.split(',').map(int.parse).toSet();
       posts = posts.where((e) => wanted.contains(e['id'])).toList();
     }
-    return _json({'posts': _paginate(posts, query)});
+    return _json(_paginate(posts, query).map((e) => _post(e, query)).toList());
   }
 
   /// `search[name_matches]` is an exact match, same as the live index.
@@ -233,7 +233,9 @@ class FakeE621 {
     final favorites = state.posts
         .where((e) => state.favorites.contains(e['id']))
         .toList();
-    return _json({'posts': _paginate(favorites, query)});
+    return _json(
+      _paginate(favorites, query).map((e) => _post(e, query)).toList(),
+    );
   }
 
   String? _username(Request request) {
@@ -252,7 +254,16 @@ class FakeE621 {
       (e) => e['id'] == int.parse(id),
       orElse: () => throw FakeE621Error(404, 'Not found'),
     );
-    return _json({'post': post});
+    return _json(_post(post, request.url.queryParameters));
+  }
+
+  Map<String, Object?> _post(
+    Map<String, Object?> post,
+    Map<String, String> query,
+  ) {
+    if (query['mode'] == 'extended') return post;
+    final tags = post['tags']! as Map<String, Object?>;
+    return {...post, 'tags': tags.values.expand((e) => e! as List).toList()};
   }
 
   Response _votePost(Request request, String id) {
@@ -274,7 +285,7 @@ class FakeE621 {
       (e) => e['id'] == int.parse(id),
       orElse: () => throw FakeE621Error(404, 'Not found'),
     );
-    final total = (post['score']! as Map)['total']! as int;
+    final total = ((post['stats']! as Map)['score']! as Map)['total']! as int;
     return _json({'score': total + score!, 'our_score': score});
   }
 
@@ -406,7 +417,7 @@ class FakeE621 {
   static const int maxPerPage = 320;
   static const int maxNumberedPages = 750;
 
-  List<Object?> _paginate(
+  List<Map<String, Object?>> _paginate(
     List<Map<String, Object?>> items,
     Map<String, String> query,
   ) {
