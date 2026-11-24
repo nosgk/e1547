@@ -79,10 +79,12 @@ rg -n -i "post_count|name_matches" Temp/api_doc.txt
 
 ## 4. 端点形状速查（app 用到的）
 
+> v2 响应结构（2026-11-26 实测）：`files.original.{url,width,height}`、`files.meta.{ext,size,has_sample}`、`files.preview.jpg`、`files.sample.jpg`、`files.video.*`、`stats.{score.total,vote,fav_count,is_favorited,comment_count}`、`has.{children,active_children,...}`、`relationships.{parent_id,children}`。旧的顶层 `file` / `score` / `fav_count` / `comment_count` / `sample.alternates` 字段已不存在。
+
 | 端点 | 要点 |
 | --- | --- |
-| `GET /posts.json` | 顶层数组（`unwrapRailsArray` 拆包）；limit ≤320；已删除帖要 `status:deleted`/`status:any` 才返回 |
-| `GET /posts/{id}.json` | 返回 `{post: {...}}` |
+| `GET /posts.json` | 顶层数组；app 传 `v2=true&mode=extended` 兼容新旧节点。响应为 v2 结构（`files.*` / `stats.*` / `has.*`，`tags` 在 extended 模式下按类别分组）；`mode` 省略时 `tags` 是扁平数组。limit ≤320；已删除帖要 `status:deleted`/`status:any` 才返回（2026-11-26 实测） |
+| `GET /posts/{id}.json` | app 传 `v2=true&mode=extended`；返回裸 post 对象（v2 结构，不再包 `{post: {...}}`；2026-11-26 实测） |
 | `GET /favorites.json` | **必须带认证，否则 404**；返回 `{posts: [...]}` |
 | `POST /posts/{id}/votes.json` | `score=1|-1&no_unvote=true` |
 | `GET /tags.json` | `search[name_matches]` 支持 `*` 通配；`search[category]` 用**站点数值**（见下表）；`search[hide_empty]` 默认 true——0 帖的 tag 查不到；`search[order]=count` 拉高频标签；limit ≤320 |
@@ -111,7 +113,7 @@ curl -s -u "用户名:api_key" -A "e1547-dev/1.0 (by 你的e621用户名)" "http
 ## 6. 本项目对接约定
 
 - 分层：`lib/<域>/data/client.dart` = 裸 dio 请求；`lib/<域>/data/query.dart` = 缓存查询扩展（`Query`/`InfiniteQuery`/`Mutation` + `dio.queryCache`，key 用 `dio.identityQueryKey(domain)`）
-- 解析：`unwrapRailsArray` 统一拆包；`E621*.fromJson` 一律容空（模型字段可空，解析不得比模型严——头像全体加载失败的回归就是 `asIntOrThrow` 引起的）
+- 解析：`E621*.fromJson` 一律容空（模型字段可空，解析不得比模型严——头像全体加载失败的回归就是 `asIntOrThrow` 引起的）。posts 接口已使用 v2 结构（见 §4），不再对 posts 响应调用 `unwrapRailsArray`；其他仍返回 Rails 包裹的端点才拆包
 - `QueryMap` 的值必须全是**字符串**（如 `'limit': '320'`）
 - 测试：`FakeE621`（`test/_support/fake_e621.dart`）＋ `test/_fixtures/*.json`；新端点先在 FakeE621 加路由（`search[name_matches]` 的假实现 = 精确匹配）；用到缓存 Query 的测试必须 `dio.queryCache = CachedQuery.asNewInstance()` ＋ `dio.queryIdentity = 1`（`dioFor` 不设置）
 - CI 三道门禁：`dart format` → `flutter analyze` → `flutter test`；本机跑测试先清空 `http_proxy`/`https_proxy`/`all_proxy`（代理会拦截 flutter_tester 的本地 WebSocket）

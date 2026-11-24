@@ -25,7 +25,7 @@ class PostClient {
   Future<Post> get({required int id, CancelToken? cancelToken}) => dio
       .get(
         '/posts/$id.json',
-        queryParameters: {'mode': 'extended'},
+        queryParameters: {'v2': true, 'mode': 'extended'},
         cancelToken: cancelToken,
       )
       .then((response) => E621Post.fromJson(response.data));
@@ -41,6 +41,7 @@ class PostClient {
         queryParameters: {
           'page': page,
           'limit': limit,
+          'v2': true,
           'mode': 'extended',
           ...?query,
         }.toQuery(),
@@ -165,6 +166,7 @@ class PostClient {
         queryParameters: {
           'page': page,
           'limit': limit,
+          'v2': true,
           'mode': 'extended',
           // may not contain tags, or we get redirected to a html page
           ...?(query?..remove('tags')),
