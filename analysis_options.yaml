@@ -170,6 +170,7 @@ linter:
 analyzer:
   exclude:
     - build/**
+    - plan/**
     - lib/**.freezed.dart
     - lib/**.g.dart
     - android/**

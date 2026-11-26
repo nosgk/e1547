@@ -108,6 +108,7 @@ extension M2ThemeData on ThemeData {
   }
 
   static ThemeData prepareTheme(ThemeData theme) => theme.copyWith(
+    extensions: [AppStyle.from(theme)],
     splashFactory: InkRipple.splashFactory,
     visualDensity: VisualDensity.standard,
     pageTransitionsTheme: const PageTransitionsTheme(

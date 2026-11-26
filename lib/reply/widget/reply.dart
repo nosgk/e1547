@@ -32,7 +32,16 @@ class ReplyTile extends StatelessWidget {
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(right: 8, top: 4),
-                      child: UserIdAvatar(userId: reply.creatorId, radius: 16),
+                      child: UserSummaryAvatar(
+                        userId: reply.creatorId,
+                        radius: 12,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                UserLoadingPage(reply.creatorId),
+                          ),
+                        ),
+                      ),
                     ),
                     Expanded(
                       child: Column(

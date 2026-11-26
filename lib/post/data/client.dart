@@ -35,6 +35,18 @@ class PostClient {
     int? limit,
     QueryMap? query,
     CancelToken? cancelToken,
+  }) => _search(
+    page: page,
+    limit: limit,
+    query: query,
+    cancelToken: cancelToken,
+  ).then(_filter);
+
+  Future<List<Post>> _search({
+    int? page,
+    int? limit,
+    QueryMap? query,
+    CancelToken? cancelToken,
   }) => dio
       .get(
         '/posts.json',
@@ -50,8 +62,7 @@ class PostClient {
       .then(
         (response) =>
             (response.data as List).map<Post>(E621Post.fromJson).toList(),
-      )
-      .then(_filter);
+      );
 
   /// Total posts matching [tags], from `/posts/count.json`. The server caps
   /// the reported count at ~240k (`capped` marks that truncation); bare
@@ -85,34 +96,47 @@ class PostClient {
 
   Future<List<Post>> byIds({
     required List<int> ids,
+    bool hidden = false,
     CancelToken? cancelToken,
   }) async {
     if (ids.isEmpty) return [];
-
-    // Server-side maximum id and page request size.
-    const int chunkSize = 320;
-
-    List<List<int>> chunks = [];
-    for (int i = 0; i < ids.length; i += chunkSize) {
-      chunks.add(ids.sublist(i, min(i + chunkSize, ids.length)));
-    }
-
-    List<Post> result = [];
-    for (final chunk in chunks) {
-      String filter = 'id:${chunk.join(',')}';
-      List<Post> part = await page(
-        query: {'tags': filter},
-        limit: chunk.length,
-        cancelToken: cancelToken,
-      );
-      Map<int, Post> table = {for (Post e in part) e.id: e};
-      result.addAll(
-        (chunk.map((e) => table[e]).toList()..removeWhere((e) => e == null))
-            .cast<Post>(),
-      );
-    }
-    return result;
+    String filter = 'id:${ids.join(',')}';
+    if (hidden) filter = '$filter status:any';
+    List<Post> found = await _search(
+      query: {'tags': filter},
+      limit: min(ids.length, maxPageLimit),
+      cancelToken: cancelToken,
+    );
+    if (!hidden) found = _filter(found);
+    Map<int, Post> table = {for (Post e in found) e.id: e};
+    return ids.map((e) => table[e]).nonNulls.toList();
   }
+
+  Future<List<PartialPost>> artistRecommendations({
+    required int id,
+    int? limit,
+    CancelToken? cancelToken,
+  }) => dio
+      .get(
+        '/posts/$id/similar/artist.json',
+        queryParameters: {'limit': limit}.toQuery(),
+        cancelToken: cancelToken,
+      )
+      .then((response) {
+        final Map<int, PartialPost> posts = {
+          for (final PartialPost post
+              in (response.data['post_data'] as List).map(
+                E621Post.partialFromJson,
+              ))
+            post.id: post,
+        };
+        return [
+          for (final Map<String, dynamic> result
+              in (response.data['results'] as List)
+                  .cast<Map<String, dynamic>>())
+            if (posts[result['post_id']] case final PartialPost post) post,
+        ];
+      });
 
   Future<List<Post>> byTags({
     required List<String> tags,
@@ -121,7 +145,7 @@ class PostClient {
     CancelToken? cancelToken,
   }) async {
     page ??= 1;
-    tags.removeWhere((e) => e.contains(' ') || e.contains(':'));
+    tags = tags.where((e) => !e.contains(' ') && !e.contains(':')).toList();
     if (tags.isEmpty) return [];
     int max = 40;
     int pages = (tags.length / max).ceil();

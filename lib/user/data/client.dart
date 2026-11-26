@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:e1547/shared/shared.dart';
 import 'package:e1547/user/user.dart';
 
 class UserClient {
@@ -45,24 +46,47 @@ class UserClient {
     }
   }
 
+  Future<List<PartialUser>> page({
+    int? page,
+    int? limit,
+    QueryMap? query,
+    CancelToken? cancelToken,
+  }) => dio
+      .get(
+        '/users.json',
+        queryParameters: {'page': page, 'limit': limit, ...?query},
+        cancelToken: cancelToken,
+      )
+      .then(unwrapRailsArray)
+      .then(
+        (response) => (response.data as List)
+            .map<PartialUser>(E621User.partialFromJson)
+            .toList(),
+      );
+
+  Future<List<PartialUser>> byIds({
+    required List<int> ids,
+    CancelToken? cancelToken,
+  }) => page(
+    limit: ids.length,
+    query: {'search[id]': ids.join(',')},
+    cancelToken: cancelToken,
+  );
+
+  Future<List<PartialUser>> search({
+    required String name,
+    int? limit,
+    CancelToken? cancelToken,
+  }) => page(
+    limit: limit,
+    query: {
+      'search[name_matches]': '$name*',
+      'search[order]': 'post_upload_count',
+    },
+    cancelToken: cancelToken,
+  );
+
   Future<User> _get(String lookup, {CancelToken? cancelToken}) => dio
       .get('/users/$lookup.json', cancelToken: cancelToken)
       .then((response) => E621User.fromJson(response.data));
-
-  /// Fetches multiple users in one request. The endpoint accepts up to 320
-  /// comma separated ids in `search[id]`; ids without a match are simply
-  /// absent from the result.
-  Future<List<User>> getMany({required List<int> ids}) => dio
-      .get(
-        '/users.json',
-        queryParameters: {
-          'search[id]': ids.join(','),
-          'limit': ids.length.clamp(1, 320),
-        },
-      )
-      .then(
-        (response) => [
-          for (final data in response.data as List) E621User.fromJson(data),
-        ],
-      );
 }

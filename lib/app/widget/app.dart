@@ -35,6 +35,8 @@ class App extends StatelessWidget {
           ),
         ],
         builder: (context, child) => LogLevelScope(
+          // Fork: appearance settings (drawer width, font scale, custom font)
+          // are rebuilt under one ListenableBuilder.
           child: ListenableBuilder(
             listenable: Listenable.merge([
               context.watch<Settings>().drawerWidth,
@@ -74,36 +76,56 @@ class App extends StatelessWidget {
                         navigatorObservers: [
                           context.watch<AnyRouteObserver>(),
                           RouteLoggerObserver(),
-                          MaterialApp.createMaterialHeroController(),
                         ],
                         routes: context.watch<RouterDrawerController>().routes,
-                        builder: (context, child) => WindowFrame(
-                          child: WindowShortcuts(
-                            navigatorKey: navigatorKey,
-                            child: SecureDisplay(
-                              child: LockScreen(
-                                child: LoadingShell(
-                                  child: MultiProvider(
-                                    providers: [
-                                      IdentityClientProvider(),
-                                      TraitsClientProvider(),
-                                      ClientProvider(),
-                                      FileCacheProvider(),
-                                      MediaCacheProvider(),
-                                      TasksControllerProvider(),
-                                    ],
-                                    child: LoadingCore(
-                                      child: OnboardingGate(
-                                        child: AccountConnector(
-                                          navigatorKey: navigatorKey,
-                                          child: FollowConnector(
-                                            child: AppLinkHandler(
-                                              navigatorKey: navigatorKey,
-                                              child: NotificationHandler(
+                        builder: (context, child) => ThemedSkeletons(
+                          child: WindowFrame(
+                            child: WindowShortcuts(
+                              navigatorKey: navigatorKey,
+                              child: SecureDisplay(
+                                child: LockScreen(
+                                  child: LoadingShell(
+                                    child: MultiProvider(
+                                      providers: [
+                                        IdentityClientProvider(),
+                                        TraitsClientProvider(),
+                                        ClientProvider(),
+                                        FileCacheProvider(),
+                                        MediaCacheProvider(),
+                                        TasksControllerProvider(),
+                                      ],
+                                      child: LoadingCore(
+                                        child: OnboardingGate(
+                                          child: AccountConnector(
+                                            navigatorKey: navigatorKey,
+                                            child: FollowConnector(
+                                              child: AppLinkHandler(
                                                 navigatorKey: navigatorKey,
-                                                child: AppBubbleOverlay(
-                                                  navigatorKey: navigatorKey,
-                                                  child: child!,
+                                                child: NotificationHandler(
+                                                  child: NotificationOpener(
+                                                    navigatorKey: navigatorKey,
+                                                    child: FollowNotificationConnector(
+                                                      // Fork: the download
+                                                      // progress notifier needs
+                                                      // TasksController, which
+                                                      // upstream mounts below
+                                                      // NotificationHandler.
+                                                      child: Builder(
+                                                        builder: (context) =>
+                                                            DownloadProgressNotifier(
+                                                              notifications:
+                                                                  NotificationHandler.of(
+                                                                    context,
+                                                                  ).notifications,
+                                                              child: AppBubbleOverlay(
+                                                                navigatorKey:
+                                                                    navigatorKey,
+                                                                child: child!,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ),

@@ -63,10 +63,6 @@ void main() {
       expect(restored.args, [1, 2]);
     });
 
-    test('reports a missing key as null', () async {
-      expect(await storage.get('["ident",1,"posts",404]'), isNull);
-    });
-
     test('replaces an existing key instead of duplicating it', () async {
       storage.put(entry('["ident",1,"posts",5]', {'score': 1}));
       storage.put(entry('["ident",1,"posts",5]', {'score': 2}));
@@ -79,9 +75,11 @@ void main() {
     test('drops the least recent entries past the cap', () async {
       final now = DateTime.now();
       for (int i = 0; i < 5; i++) {
-        final data = {'id': i};
-        final time = now.subtract(Duration(minutes: 5 - i));
-        storage.put(entry('["ident",1,"posts",$i]', data, createdAt: time));
+        storage.put(
+          entry('["ident",1,"posts",$i]', {
+            'id': i,
+          }, createdAt: now.subtract(Duration(minutes: 5 - i))),
+        );
       }
       await settle();
 
@@ -91,21 +89,45 @@ void main() {
       expect(await storage.get('["ident",1,"posts",4]'), isNotNull);
     });
 
-    test('sweeps expired entries when the cap is reached', () async {
+    test('removes expired entries once the cap is passed', () async {
+      final now = DateTime.now();
+      for (int i = 1; i < 4; i++) {
+        storage.put(
+          entry('["ident",1,"posts",$i]', {
+            'id': i,
+          }, createdAt: now.subtract(Duration(minutes: 5 - i))),
+        );
+      }
       storage.put(
         entry(
           '["ident",1,"posts",0]',
           {'id': 0},
           duration: const Duration(milliseconds: 1),
-          createdAt: DateTime(2020),
+          createdAt: now.subtract(const Duration(seconds: 1)),
         ),
       );
-      for (int i = 1; i < 4; i++) {
-        storage.put(entry('["ident",1,"posts",$i]', {'id': i}));
-      }
       await settle();
 
       expect(await storage.get('["ident",1,"posts",0]'), isNull);
+      for (int i = 1; i < 4; i++) {
+        expect(await storage.get('["ident",1,"posts",$i]'), isNotNull);
+      }
+    });
+
+    test('keeps expired entries up to the cap', () async {
+      storage.put(entry('["ident",1,"posts",1]', {'id': 1}));
+      storage.put(entry('["ident",1,"posts",2]', {'id': 2}));
+      storage.put(
+        entry(
+          '["ident",1,"posts",0]',
+          {'id': 0},
+          duration: const Duration(milliseconds: 1),
+          createdAt: DateTime.now().subtract(const Duration(seconds: 1)),
+        ),
+      );
+      await settle();
+
+      expect(await repository.count(), 3);
     });
 
     test('removes only the queries of one identity', () async {

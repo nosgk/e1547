@@ -29,6 +29,12 @@ class FakePlatformPlayer extends PlatformPlayer {
   Future<void> pause() async => _setPlaying(false);
 
   @override
+  Future<void> seek(Duration duration) async {
+    state = state.copyWith(position: duration);
+    positionController.add(duration);
+  }
+
+  @override
   Future<void> setPlaylistMode(PlaylistMode playlistMode) async {}
 
   @override

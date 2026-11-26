@@ -95,6 +95,7 @@ class _LogFileListState extends State<LogFileList> {
               .toList();
           return SelectionLayout<LogFileInfo>(
             items: files,
+            keyOf: (file) => file.path,
             child: Scaffold(
               appBar: LogFileSelectionAppBar(
                 child: DefaultAppBar(title: Text('Log Files'.tr)),
@@ -113,7 +114,7 @@ class _LogFileListState extends State<LogFileList> {
                     );
                   }
                   if (files == null) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: HexagonalLoadingIndicator());
                   }
                   if (files.isEmpty) {
                     return IconMessage(
@@ -316,6 +317,7 @@ class _LogPageState extends State<LogPage> {
       final DateTime? date = widget.source.date;
       return SelectionLayout<LogEntry>(
         items: items,
+        keyOf: (item) => item.id ?? item,
         child: Expandables(
           child: Scaffold(
             appBar: LogSelectionAppBar(
@@ -373,6 +375,9 @@ class _LogPageState extends State<LogPage> {
                 ],
               ),
             ),
+            floatingActionButtonLocation: Handedness.of(
+              context,
+            ).floatingActionButtonLocation,
             floatingActionButton: items.isEmpty
                 ? null
                 : FloatingActionButton(

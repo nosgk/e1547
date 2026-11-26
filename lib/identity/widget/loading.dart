@@ -116,7 +116,7 @@ class _LoginLoadingDialogState extends State<LoginLoadingDialog> {
               child: SizedBox(
                 height: 28,
                 width: 28,
-                child: CircularProgressIndicator(),
+                child: HexagonalLoadingIndicator(),
               ),
             ),
             Padding(

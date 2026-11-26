@@ -4,6 +4,7 @@ import 'package:e1547/logs/logs.dart';
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sub/flutter_sub.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -72,6 +73,9 @@ class VideoPlayer extends Player {
     _failed = false;
     _hasParams = false;
     _update();
+    if (platform case NativePlayer native) {
+      await native.setProperty('stream-buffer-size', '32MiB');
+    }
     await open(Media(media), play: false);
   }
 
@@ -179,10 +183,18 @@ class VideoService extends ChangeNotifier {
 
 class VideoServiceProvider
     extends SubChangeNotifierProvider<Settings, VideoService> {
-  VideoServiceProvider({super.child, super.builder})
+  VideoServiceProvider({super.child, TransitionBuilder? builder})
     : super(
         create: (context, settings) =>
             VideoService(muteVideos: settings.muteVideos.value),
+        builder: (context, child) => Consumer2<VideoService, Settings>(
+          builder: (context, service, settings, child) => SubListener(
+            listenable: settings.muteVideos,
+            listener: () => service.muteVideos = settings.muteVideos.value,
+            builder: (context) => builder?.call(context, child) ?? child!,
+          ),
+          child: child,
+        ),
       );
 }
 

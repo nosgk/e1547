@@ -32,6 +32,51 @@ abstract final class FileDownloader {
     }
   }
 
+  static Future<bool> prepareDirectory({
+    required String? directory,
+    required void Function(String dir) onDirectoryChanged,
+  }) async {
+    if (Platform.isIOS) return true;
+    final String? resolved = await _resolveDirectory(directory);
+    if (resolved == null) return false;
+    onDirectoryChanged(resolved);
+    return true;
+  }
+
+  static Future<String?> _resolveDirectory(String? directory) async {
+    if (Platform.isAndroid) {
+      if (directory?.contains('/storage/emulated/') ?? false) {
+        directory = null;
+      }
+      if (directory != null &&
+          await SafUtil().hasPersistedPermission(directory, checkWrite: true)) {
+        return directory;
+      }
+      return pickDirectory(initial: directory);
+    }
+    return directory ?? await pickDirectory();
+  }
+
+  static String displayPath(String directory) {
+    final Uri? uri = Uri.tryParse(directory);
+    if (uri == null || uri.scheme != 'content') return directory;
+    final List<String> segments = uri.pathSegments;
+    final int document = segments.lastIndexOf('document');
+    final int at = document >= 0 ? document : segments.indexOf('tree');
+    if (at < 0 || at + 1 >= segments.length) return directory;
+    final String id = segments[at + 1];
+    final int colon = id.indexOf(':');
+    if (colon < 0) return id;
+    final String volume = id.substring(0, colon);
+    final String path = id.substring(colon + 1);
+    if (volume == 'primary') return path.isEmpty ? 'Internal storage' : path;
+    if (volume == 'raw') return path;
+    return path.isEmpty ? volume : '$volume/$path';
+  }
+
+  static bool _isPictures(String directory) =>
+      basename(displayPath(directory)) == 'Pictures';
+
   /// Releases permissions to a previously selected directory.
   static Future<void> forgetDirectory(String? directory) async {
     if (Platform.isAndroid && directory != null) {
@@ -51,32 +96,22 @@ abstract final class FileDownloader {
     String? fileName,
     void Function(String dir)? onDirectoryChanged,
   }) async {
+    final String name = (fileName ?? basename(file.path)).replaceAll(
+      RegExp(r'[\\/:*?"<>|\x00-\x1F]'),
+      '_',
+    );
     try {
       if (Platform.isIOS) {
         throw UnsupportedError(
           'Generic file downloading is not supported on iOS',
         );
       } else if (Platform.isAndroid) {
-        if (directory?.contains('/storage/emulated/') ?? false) {
-          directory = null;
-        }
+        String target = await _throwOnNull(
+          _resolveDirectory(directory),
+          'No directory was selected.',
+        );
 
-        String target;
-        if (directory == null ||
-            !await SafUtil().hasPersistedPermission(
-              directory,
-              checkWrite: true,
-            )) {
-          target = await _throwOnNull(
-            pickDirectory(initial: directory),
-            'No directory was selected.',
-          );
-        } else {
-          target = directory;
-        }
-
-        String lastSegment = Uri.parse(target).pathSegments.last;
-        if (folderName != null && lastSegment == 'Pictures') {
+        if (folderName != null && _isPictures(target)) {
           try {
             final targetDir = await SafUtil().mkdirp(target, [folderName]);
             target = targetDir.uri;
@@ -87,26 +122,25 @@ abstract final class FileDownloader {
 
         onDirectoryChanged?.call(target);
         final safStream = SafStream();
-        final mimeType =
-            lookupMimeType(fileName ?? basename(file.path)) ??
-            'application/octet-stream';
+        final mimeType = lookupMimeType(name) ?? 'application/octet-stream';
         await safStream.pasteLocalFile(
           file.path,
           target,
-          fileName ?? basename(file.path),
+          name,
           mimeType,
           overwrite: true,
         );
         // This should probably only happen in [downloadImage].
         await MediaScanner.loadMedia(path: target);
       } else {
-        String directoryPath =
-            directory ??
-            await _throwOnNull(pickDirectory(), 'No directory was selected.');
+        String directoryPath = await _throwOnNull(
+          _resolveDirectory(directory),
+          'No directory was selected.',
+        );
 
         onDirectoryChanged?.call(directoryPath);
 
-        if (folderName != null && basename(directoryPath) == 'Pictures') {
+        if (folderName != null && _isPictures(directoryPath)) {
           directoryPath = join(directoryPath, folderName);
         }
 
@@ -115,9 +149,7 @@ abstract final class FileDownloader {
           await targetDir.create(recursive: true);
         }
 
-        final targetFile = File(
-          join(directoryPath, fileName ?? basename(file.path)),
-        );
+        final targetFile = File(join(directoryPath, name));
         await targetFile.writeAsBytes(await file.readAsBytes());
       }
     } on Exception catch (e) {

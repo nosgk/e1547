@@ -1,13 +1,9 @@
-import 'dart:math';
-
 import 'package:e1547/client/client.dart';
-import 'package:e1547/markup/markup.dart';
 import 'package:e1547/pool/pool.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/query/query.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/tag/tag.dart';
-import 'package:e1547/translate/translate.dart';
 import 'package:flutter/material.dart';
 
 class PoolTile extends StatelessWidget {
@@ -16,266 +12,151 @@ class PoolTile extends StatelessWidget {
   final Pool pool;
   final VoidCallback? onPressed;
 
+  static const double titleLineHeight = 20;
+
   @override
   Widget build(BuildContext context) {
-    Widget? image;
-
-    if (pool.postIds.isNotEmpty) {
-      final client = context.watch<Client>();
-      final thumbnailId = pool.postIds.first;
-      image = QueryBuilder(
-        query: client.posts.useGet(id: thumbnailId, vendored: true),
-        builder: (context, state) {
-          final post = state.data;
-          if (post == null) return const SizedBox.shrink();
-          final filter = context.watch<FilterController<Post>?>();
-          if (filter != null && !filter.filter(post)) {
-            return const SizedBox.shrink();
-          }
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 400),
-              child: AspectRatio(
-                aspectRatio: max(post.width / post.height, 0.9),
-                child: PostImageTile(post: post),
-              ),
-            ),
-          );
-        },
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(4),
-          child: Stack(
-            fit: StackFit.passthrough,
+    final TileLayoutData layout = TileLayout.of(context);
+    final bool staggered = layout.stagger == GridQuilt.vertical;
+    final Widget title = Text(
+      tagToName(pool.name),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontSize: 14, height: titleLineHeight / 14),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 6,
             children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  AppStyle.of(context).smallRadius,
+                ),
+                child: staggered
+                    ? PoolCover(
+                        id: pool.postIds.firstOrNull,
+                        adaptive: true,
+                        emptyRatio: PostGhost
+                            .ratios[pool.id.abs() % PostGhost.ratios.length],
+                      )
+                    : AspectRatio(
+                        aspectRatio: 1 / layout.tileHeightFactor,
+                        child: PoolCover(id: pool.postIds.firstOrNull),
+                      ),
+              ),
               Padding(
-                padding: const EdgeInsets.all(8),
-                child: AnimatedSize(
-                  duration: defaultAnimationDuration,
-                  child: _PoolTileText(pool: pool, image: image),
-                ),
-              ),
-              Positioned.fill(
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: InkWell(
-                    onTap: onPressed,
-                    onLongPress: () =>
-                        showPoolPrompt(context: context, pool: pool),
-                    onSecondaryTap: () =>
-                        showPoolPrompt(context: context, pool: pool),
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (staggered)
+                      title
+                    else
+                      SizedBox(
+                        height: titleLineHeight * 2,
+                        child: Align(
+                          alignment: AlignmentDirectional.topStart,
+                          child: title,
+                        ),
+                      ),
+                    Text(
+                      '{count} posts'.trArgs({'count': pool.postCount}),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: dimTextColor(context),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
-        const Divider(indent: 8, endIndent: 8),
-      ],
-    );
-  }
-}
-
-/// Title and description of a pool tile, with a single control that
-/// translates both at once. The description is never truncated.
-class _PoolTileText extends StatefulWidget {
-  const _PoolTileText({required this.pool, this.image});
-
-  final Pool pool;
-  final Widget? image;
-
-  @override
-  State<_PoolTileText> createState() => _PoolTileTextState();
-}
-
-class _PoolTileTextState extends State<_PoolTileText> {
-  TranslationEntry? _title;
-  TranslationEntry? _description;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _title ??= createTranslationEntry(context, tagToName(widget.pool.name));
-    if (widget.pool.description.isNotEmpty) {
-      _description ??= createTranslationEntry(context, widget.pool.description);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _PoolTileText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.pool.name != widget.pool.name ||
-        oldWidget.pool.description != widget.pool.description) {
-      _title?.dispose();
-      _description?.dispose();
-      _title = createTranslationEntry(context, tagToName(widget.pool.name));
-      _description = widget.pool.description.isNotEmpty
-          ? createTranslationEntry(context, widget.pool.description)
-          : null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _title?.dispose();
-    _description?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final title = _title!;
-    final description = _description;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: TranslationOriginal(
-                  category: TranslationCategory.pool,
-                  entry: title,
-                  original: Text(
-                    tagToName(widget.pool.name),
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 1,
-                  ),
-                  replacementBuilder: (context, text) => Text(
-                    text,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 1,
-                  ),
+          Positioned.fill(
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: onPressed,
+                onLongPress: () => showPoolPrompt(context: context, pool: pool),
+                onSecondaryTap: () =>
+                    showPoolPrompt(context: context, pool: pool),
+                borderRadius: BorderRadius.circular(
+                  AppStyle.of(context).smallRadius,
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                widget.pool.postIds.length.toString(),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              _PoolTileTranslateButton(title: title, description: description),
-            ],
-          ),
-        ),
-        TranslationDisplay(
-          entry: title,
-          compact: true,
-          category: TranslationCategory.pool,
-        ),
-        if (description != null)
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Opacity(
-              opacity: 0.5,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TranslationOriginal(
-                    category: TranslationCategory.pool,
-                    entry: description,
-                    original: DText(widget.pool.description),
-                  ),
-                  TranslationDisplay(
-                    entry: description,
-                    compact: true,
-                    category: TranslationCategory.pool,
-                  ),
-                ],
               ),
             ),
           ),
-        if (widget.image != null) widget.image!,
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// One compact trigger translating (and toggling) a pool tile's title and
-/// description together.
-class _PoolTileTranslateButton extends StatelessWidget {
-  const _PoolTileTranslateButton({
-    required this.title,
-    required this.description,
+class PoolCover extends StatelessWidget {
+  const PoolCover({
+    super.key,
+    required this.id,
+    this.adaptive = false,
+    this.emptyRatio = 0.8,
   });
 
-  final TranslationEntry title;
-  final TranslationEntry? description;
+  final int? id;
+  final bool adaptive;
+  final double emptyRatio;
 
   @override
   Widget build(BuildContext context) {
-    final enabledListenable = tryTranslationEnabledOf(context);
-    if (enabledListenable == null) {
-      // No Settings provider (tests, standalone hosts): hide the button.
-      return const SizedBox.shrink();
+    final Widget empty = ColoredBox(color: AppStyle.of(context).skeleton);
+    Widget shape(Widget child, [double? ratio]) => adaptive
+        ? AspectRatio(aspectRatio: ratio ?? emptyRatio, child: child)
+        : SizedBox.expand(child: child);
+    if (isSkeleton(context)) {
+      return shape(const Bone(width: double.infinity, height: double.infinity));
     }
-    return ValueListenableBuilder<bool>(
-      valueListenable: enabledListenable,
-      builder: (context, enabled, child) {
-        if (!enabled) return const SizedBox.shrink();
-        final entries = [title, if (description != null) description!];
-        return AnimatedBuilder(
-          animation: Listenable.merge(entries),
-          builder: (context, child) {
-            final anyLoading = entries.any(
-              (e) => e.status == TranslationStatus.loading,
-            );
-            if (anyLoading) {
-              return const Dimmed(
-                child: SizedBox(
-                  width: 28,
-                  height: 24,
-                  child: Center(
-                    child: SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
+    final int? id = this.id;
+    if (id == null) return shape(empty);
+    final Client client = context.watch<Client>();
+    return QueryBuilder(
+      query: client.posts.useGet(id: id, vendored: true),
+      builder: (context, state) {
+        final Post? post = state.data;
+        if (post == null) return shape(empty);
+        final FilterController<Post>? filter = context
+            .watch<FilterController<Post>?>();
+        if (filter != null && !filter.filter(post)) {
+          return shape(
+            Stack(
+              fit: StackFit.expand,
+              children: [
+                empty,
+                Center(child: Icon(Icons.block, color: dimTextColor(context))),
+              ],
+            ),
+          );
+        }
+        return shape(
+          Stack(
+            fit: StackFit.expand,
+            children: [
+              empty,
+              PostTileOverlay(
+                post: post,
+                child: PostImageWidget(
+                  post: post,
+                  size: PostImageSize.sample,
+                  fit: BoxFit.cover,
+                  showProgress: false,
+                  withLowRes: false,
                 ),
-              );
-            }
-            final loaded = entries.where((e) => e.translation != null).toList();
-            final failed = entries.any(
-              (e) => e.status == TranslationStatus.error,
-            );
-            final expanded = entries.any((e) => e.expanded);
-            return Dimmed(
-              child: IconButton(
-                tooltip: failed
-                    ? 'Retry'.tr
-                    : loaded.isEmpty
-                    ? 'Translate'.tr
-                    : (expanded
-                          ? 'Collapse translation'.tr
-                          : 'Show translation'.tr),
-                icon: Icon(
-                  loaded.isEmpty
-                      ? (failed ? Icons.refresh : Icons.translate)
-                      : (expanded ? Icons.keyboard_arrow_up : Icons.translate),
-                  size: 16,
-                ),
-                visualDensity: VisualDensity.compact,
-                onPressed: () {
-                  if (loaded.isEmpty) {
-                    for (final entry in entries) {
-                      translateEntry(context, entry);
-                    }
-                  } else {
-                    for (final entry in loaded) {
-                      expanded ? entry.collapse() : entry.expand();
-                    }
-                  }
-                },
               ),
-            );
-          },
+            ],
+          ),
+          post.file == null
+              ? emptyRatio
+              : (post.width / post.height).clamp(0.6, 1.4),
         );
       },
     );

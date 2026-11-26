@@ -3,6 +3,8 @@ import 'package:e1547/post/post.dart';
 import 'package:e1547/query/query.dart';
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
+import 'package:e1547/tag/tag.dart';
+import 'package:e1547/traits/traits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sub/flutter_sub.dart';
 
@@ -33,6 +35,7 @@ class HomePage extends StatelessWidget {
                   // tools can read the live controller.
                   return SelectionLayout<Post>(
                     items: state.data?.pages.expand((p) => p).toList(),
+                    keyOf: (post) => post.id,
                     child: AdaptiveScaffold(
                       appBar: const PostSelectionAppBar(
                         child: DefaultAppBar(
@@ -44,7 +47,15 @@ class HomePage extends StatelessWidget {
                       drawer: const RouterDrawer(),
                       endDrawer: ContextDrawer(
                         title: Text('Posts'.tr),
-                        children: const [PostSearchTools(), PostPlayModes()],
+                        children: [
+                          const PostSearchTools(),
+                          const PostPlayModes(),
+                          const DrawerDenySwitch(),
+                          DrawerTagCounter(
+                            posts: state.data?.pages.expand((p) => p).toList(),
+                            error: state.error,
+                          ),
+                        ],
                       ),
                       body: LimitedWidthLayout(
                         child: ListenableBuilder(

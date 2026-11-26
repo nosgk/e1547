@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:e1547/settings/settings.dart';
-import 'package:flutter/widgets.dart';
+import 'package:e1547/shared/shared.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:relative_time/relative_time.dart';
 
 /// Establishes the globals that `AppInit` sets up in production, and restores
 /// real networking so tests can reach a local server.
@@ -29,6 +31,12 @@ Future<void> initializeTestApp() async {
   );
 }
 
+const List<LocalizationsDelegate<Object>> testLocalizations = [
+  DefaultMaterialLocalizations.delegate,
+  DefaultWidgetsLocalizations.delegate,
+  RelativeTimeLocalizations.delegate,
+];
+
 /// Query builders schedule their cache entry for deletion as they unmount, and
 /// that timer has to run out while the test still owns the clock.
 ///
@@ -38,11 +46,21 @@ Future<void> initializeTestApp() async {
 /// timeout and drop the client before the binding checks for pending timers.
 void displayTest(String description, WidgetTesterCallback body) =>
     testWidgets(description, (tester) async {
-      await body(tester);
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump(const Duration(seconds: 1));
+      try {
+        await body(tester);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(seconds: 5));
+      }
     });
 
 /// Stops a Dio instance from arming the 30s connect timer that widget tests
 /// cannot drain. Pass this as `connectTimeout` to `createDefaultDio`.
 const Duration noTestConnectTimeout = Duration.zero;
+
+Finder skeletons(Finder matching) => find.descendant(
+  of: find.byWidgetPredicate(
+    (widget) => widget is Skeletonizer && widget.enabled,
+  ),
+  matching: matching,
+);

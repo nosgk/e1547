@@ -28,15 +28,21 @@ class SliverCommentList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CommentPageQueryBuilder(
-    builder: (context, state, query) => PagedSliverList<int, Comment>(
+    builder: (context, state, query) => SliverSkeletonPaging<Comment>(
       state: state.paging,
       fetchNextPage: query.getNextPage,
-      builderDelegate: defaultPagedChildBuilderDelegate(
-        onRetry: query.getNextPage,
-        itemBuilder: (context, item, index) => CommentTile(comment: item),
-        onEmpty: Text('No comments'.tr),
-        onError: Text('Failed to load comments'.tr),
-      ),
+      ghost: CommentGhost.new,
+      builder: (context, paging, fetchNextPage) =>
+          PagedSliverList<int, Comment>(
+            state: paging,
+            fetchNextPage: fetchNextPage,
+            builderDelegate: defaultPagedChildBuilderDelegate(
+              onRetry: query.getNextPage,
+              itemBuilder: (context, item, index) => CommentTile(comment: item),
+              onEmpty: Text('No comments'.tr),
+              onError: Text('Failed to load comments'.tr),
+            ),
+          ),
     ),
   );
 }

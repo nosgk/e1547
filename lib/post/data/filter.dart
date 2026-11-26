@@ -10,7 +10,6 @@ class PostFilter extends FilterController<Post>
     implements ValueNotifier<PostFilterValue> {
   PostFilter(this.client, [PostFilterValue? value])
     : _value = value ?? const PostFilterValue() {
-    _allowedPostsSet = {..._value.allowedPosts};
     client.traits.addListener(_updateDenyList);
   }
 
@@ -18,9 +17,11 @@ class PostFilter extends FilterController<Post>
 
   PostFilterValue _value;
 
-  Set<int> _allowedPostsSet = const {};
-
   final Map<int, _PostFilterCache> _filterCache = {};
+
+  static const Duration _staleAfter = Duration(minutes: 5);
+
+  DateTime _evictedAt = DateTime.now();
 
   void _updateDenyList() {
     _filterCache.clear();
@@ -31,7 +32,9 @@ class PostFilter extends FilterController<Post>
   Object idOf(Post post) => post.id;
 
   @override
-  bool filter(Post post) => !denies(post);
+  bool filter(Post post) => allows(post);
+
+  bool allows(PostSummary post) => !denies(post);
 
   @override
   PostFilterValue get value => _value;
@@ -90,46 +93,59 @@ class PostFilter extends FilterController<Post>
 
   Map<String, int> get blockedCountsByEntry {
     if (!denying) return const {};
-    final allowedPostIds = {...allowedPosts};
-    final allowedEntryNames = {...allowedEntries};
     final counts = <String, int>{};
     for (final post in tracked) {
-      if (allowedPostIds.contains(post.id)) continue;
+      if (allowedPosts.contains(post.id)) continue;
       for (final entry in entriesFor(post)) {
-        if (allowedEntryNames.contains(entry)) continue;
+        if (allowedEntries.contains(entry)) continue;
         counts[entry] = (counts[entry] ?? 0) + 1;
       }
     }
     return counts;
   }
 
-  List<String> entriesFor(Post post) {
+  List<String> entriesFor(PostSummary post) {
+    final now = DateTime.now();
+    _evictStaleEntries(now);
+
     final cached = _filterCache[post.id];
 
-    if (cached == null || cached.hash != post.hashCode) {
-      // Bounded memory: drop the cache wholesale when it grows too large.
-      // Denylist changes clear it via the traits listener, post changes are
-      // detected through the hash, so a full clear is always safe.
-      if (_filterCache.length > 4096) _filterCache.clear();
+    if (cached == null ||
+        (!identical(cached.post, post) && cached.hash != post.hashCode)) {
       final deniers = post.getDeniers(client.traits.value.denylist).toList();
-      _filterCache[post.id] = (hash: post.hashCode, entries: deniers);
+      _filterCache[post.id] = (
+        post: post,
+        hash: post.hashCode,
+        entries: deniers,
+        lastAccessed: now,
+      );
       return deniers;
     }
 
+    _filterCache[post.id] = (
+      post: post,
+      hash: cached.hash,
+      entries: cached.entries,
+      lastAccessed: now,
+    );
     return cached.entries;
   }
 
-  bool denies(Post post) {
+  void _evictStaleEntries(DateTime now) {
+    if (now.difference(_evictedAt) < _staleAfter) return;
+    _evictedAt = now;
+    final cutoff = now.subtract(_staleAfter);
+    _filterCache.removeWhere((_, entry) => entry.lastAccessed.isBefore(cutoff));
+  }
+
+  bool blocks(PostSummary post) {
     if (!denying) return false;
-    // An empty denylist can never deny anything; skip the cache machinery.
-    if (client.traits.value.denylist.isEmpty) return false;
-    if (_allowedPostsSet.contains(post.id)) return false;
-    final entries = entriesFor(post);
-    if (entries.isEmpty) return false;
-    for (final entry in entries) {
-      if (!allowedEntries.contains(entry)) return true;
-    }
-    return false;
+    return entriesFor(post).any((entry) => !allowedEntries.contains(entry));
+  }
+
+  bool denies(PostSummary post) {
+    if (allowedPosts.contains(post.id)) return false;
+    return blocks(post);
   }
 
   @override
@@ -143,13 +159,18 @@ class FavoritePostFilter extends PostFilter {
   FavoritePostFilter(super.client, [super.value]);
 
   @override
-  bool filter(Post post) {
+  bool allows(PostSummary post) {
     if (post.isFavorited) return true;
-    return super.filter(post);
+    return super.allows(post);
   }
 }
 
-typedef _PostFilterCache = ({int hash, List<String> entries});
+typedef _PostFilterCache = ({
+  PostSummary post,
+  int hash,
+  List<String> entries,
+  DateTime lastAccessed,
+});
 
 @freezed
 abstract class PostFilterValue with _$PostFilterValue {

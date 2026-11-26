@@ -14,37 +14,29 @@ Future<void> showPoolPrompt({
   context,
   dialogWidth: 800,
   pinnedHeader: true,
-  header: (context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-    child: OverflowBar(
-      alignment: MainAxisAlignment.spaceBetween,
-      overflowSpacing: 8,
-      children: [
-        TranslatableHost(
-          text: tagToName(pool.name),
-          builder: (context, translation) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                tagToName(pool.name),
-                style: Theme.of(context).textTheme.titleLarge,
-                softWrap: true,
-              ),
-              TranslationDisplay(entry: translation, compact: true),
-              TranslationButton(entry: translation, compact: true),
-            ],
+  header: (context) => PromptHeader(
+    title: TranslatableHost(
+      text: tagToName(pool.name),
+      builder: (context, translation) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            tagToName(pool.name),
+            style: Theme.of(context).textTheme.titleLarge,
+            softWrap: true,
           ),
-        ),
-        PoolActions(pool: pool),
-      ],
+          TranslationDisplay(entry: translation, compact: true),
+          TranslationButton(entry: translation, compact: true),
+        ],
+      ),
     ),
+    actions: PoolActions(pool: pool),
   ),
   body: Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Divider(indent: 4, endIndent: 4),
       Padding(
         padding: const EdgeInsets.all(16),
         child: pool.description.isNotEmpty

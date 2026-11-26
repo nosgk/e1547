@@ -61,7 +61,7 @@ void main() {
       expect(body, bytes);
     });
 
-    test('passes the headers the cache asks for', () async {
+    test('passes the headers the cache requests', () async {
       respond = (request) => request.response
         ..statusCode = 200
         ..close();
@@ -129,7 +129,8 @@ void main() {
       );
     });
 
-    test('fetches through the given dio', () async {
+    test('fetches with the headers of the given dio', () async {
+      dio.options.headers[HttpHeaders.authorizationHeader] = 'Basic dGVzdGVy';
       final List<int> bytes = List.filled(64, 7);
       respond = (request) => request.response
         ..statusCode = 200
@@ -151,7 +152,10 @@ void main() {
       final FileInfo info = await manager.downloadFile(url('/a.png'));
 
       expect(await info.file.readAsBytes(), bytes);
-      expect(received, hasLength(1));
+      expect(
+        received.single.value(HttpHeaders.authorizationHeader),
+        'Basic dGVzdGVy',
+      );
     });
   });
 }

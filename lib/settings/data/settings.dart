@@ -1,4 +1,5 @@
 import 'package:e1547/app/app.dart';
+import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:e1547/translate/data/translate.dart';
 import 'package:flutter/foundation.dart';
@@ -24,6 +25,11 @@ class Settings extends NotifiedSettings {
     key: 'theme',
     initialValue: AppTheme.values.first,
     values: AppTheme.values,
+  );
+  late final ValueNotifier<Handedness> handedness = createEnumSetting(
+    key: 'handedness',
+    initialValue: Handedness.right,
+    values: Handedness.values,
   );
 
   /// App display language override: null = follow system locale,
@@ -54,6 +60,10 @@ class Settings extends NotifiedSettings {
   late final ValueNotifier<bool> upvoteFavs = createSetting<bool>(
     key: 'upvoteFavs',
     initialValue: false,
+  );
+  late final ValueNotifier<bool> swipeToClose = createSetting<bool>(
+    key: 'swipeToClose',
+    initialValue: true,
   );
   late final ValueNotifier<String?> downloadPath = createSetting<String?>(
     key: 'downloadPath',

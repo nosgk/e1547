@@ -7,8 +7,6 @@ import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-typedef LinkCallback = FutureOr<void> Function(Uri? url);
-
 class AppLinkHandler extends StatefulWidget {
   const AppLinkHandler({
     super.key,
@@ -27,6 +25,8 @@ class _AppLinkHandlerState extends State<AppLinkHandler>
     with WidgetsBindingObserver {
   late AppLinks appLinks;
   StreamSubscription<Uri>? linkListener;
+  bool initialLinkHandled = false;
+  // Fork: clipboard link prompt state.
   String? _lastClipboard;
   bool _prompting = false;
 
@@ -61,8 +61,14 @@ class _AppLinkHandlerState extends State<AppLinkHandler>
     super.initState();
     if (PlatformCapabilities.hasDeepLinks) {
       appLinks = AppLinks();
-      appLinks.getInitialLink().then(onInitialLink);
-      linkListener = appLinks.uriLinkStream.listen(onLink);
+      final Future<Uri?> initialLink = appLinks.getInitialLink();
+      linkListener = appLinks.uriLinkStream.listen((url) async {
+        if (!initialLinkHandled && url == await initialLink) {
+          initialLinkHandled = true;
+          return onInitialLink(url);
+        }
+        return onLink(url);
+      });
     }
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkClipboard());

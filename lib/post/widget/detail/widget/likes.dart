@@ -33,9 +33,10 @@ class LikeDisplay extends StatelessWidget {
                   score: post.score,
                   onUpvote: enabled
                       ? (isLiked) async {
-                          mutate((upvote: true, replace: !isLiked)).catchError((
-                            error,
-                          ) {
+                          if ((await mutate((
+                            upvote: true,
+                            replace: !isLiked,
+                          ))).isError) {
                             messenger.showSnackBar(
                               SnackBar(
                                 duration: const Duration(seconds: 1),
@@ -44,28 +45,29 @@ class LikeDisplay extends StatelessWidget {
                                 ),
                               ),
                             );
-                            return error;
-                          });
+                            return isLiked;
+                          }
                           return !isLiked;
                         }
                       : null,
                   onDownvote: enabled
                       ? (isLiked) async {
-                          mutate((upvote: false, replace: !isLiked)).catchError(
-                            (error) {
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  duration: const Duration(seconds: 1),
-                                  content: Text(
-                                    'Failed to downvote Post #{id}'.trArgs({
-                                      'id': post.id.toString(),
-                                    }),
-                                  ),
+                          if ((await mutate((
+                            upvote: false,
+                            replace: !isLiked,
+                          ))).isError) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                duration: const Duration(seconds: 1),
+                                content: Text(
+                                  'Failed to downvote Post #{id}'.trArgs({
+                                    'id': post.id.toString(),
+                                  }),
                                 ),
-                              );
-                              return error;
-                            },
-                          );
+                              ),
+                            );
+                            return isLiked;
+                          }
                           return !isLiked;
                         }
                       : null,
@@ -169,19 +171,7 @@ class FavoriteButton extends StatelessWidget {
                     return isLiked;
                   }
                 : (isLiked) async {
-                    try {
-                      await mutate(post.id);
-                      if (!isLiked && settings.upvoteFavs.value) {
-                        try {
-                          await client.posts.useVote(id: post.id).mutate((
-                            upvote: true,
-                            replace: true,
-                          ));
-                        } on Exception {
-                          // upvote is best-effort once the favorite succeeded
-                        }
-                      }
-                    } on Exception {
+                    if ((await mutate(post.id)).isError) {
                       messenger.showSnackBar(
                         SnackBar(
                           duration: const Duration(seconds: 1),
@@ -194,6 +184,14 @@ class FavoriteButton extends StatelessWidget {
                           ),
                         ),
                       );
+                      return isLiked;
+                    }
+                    if (!isLiked && settings.upvoteFavs.value) {
+                      // upvote is best-effort once the favorite succeeded
+                      await client.posts.useVote(id: post.id).mutate((
+                        upvote: true,
+                        replace: true,
+                      ));
                     }
                     return !isLiked;
                   },

@@ -30,47 +30,39 @@ Future<void> showTagSearchPrompt({
     header: (context) {
       final canSearch =
           context.read<PostParamsController?>()?.canSearch ?? false;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        child: OverflowBar(
-          alignment: MainAxisAlignment.spaceBetween,
-          overflowSpacing: 8,
-          children: [
-            InkWell(
-              onTap: () {
-                Navigator.of(context).maybePop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        PostsPage(params: PostParams(tags: tag)),
-                  ),
-                );
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tagToName(tag),
-                    style: Theme.of(context).textTheme.titleLarge,
-                    softWrap: true,
-                  ),
-                  TagPostCountLine(tag: tag),
-                ],
+      return PromptHeader(
+        title: InkWell(
+          onTap: () {
+            Navigator.of(context).maybePop();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => PostsPage(params: PostParams(tags: tag)),
               ),
-            ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (canSearch) TagSearchActions(tag: tag),
-                  AddTagPresetAction(tag: tag),
-                  TagListActions(tag: tag),
-                ],
+            );
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tagToName(tag),
+                style: Theme.of(context).textTheme.titleLarge,
+                softWrap: true,
               ),
-            ),
-          ],
+              TagPostCountLine(tag: tag),
+            ],
+          ),
+        ),
+        actions: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canSearch) TagSearchActions(tag: tag),
+              AddTagPresetAction(tag: tag),
+              TagListActions(tag: tag),
+            ],
+          ),
         ),
       );
     },
@@ -78,7 +70,6 @@ Future<void> showTagSearchPrompt({
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(indent: 4, endIndent: 4),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           // Keeps the dialog from jumping as each tag resolves.
@@ -273,15 +264,7 @@ class _SearchTagDisplayState extends State<SearchTagDisplay> {
             );
           }
         },
-        secondChild: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
-          ],
-        ),
+        secondChild: Skeletonizer(child: DText(const WikiGhost().body)),
       ),
     );
   }

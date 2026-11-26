@@ -42,12 +42,9 @@ Future<void> copyPostTags(BuildContext context, Post post) async {
 /// configured.
 Future<void> exportPostTags(BuildContext context, Post post) async {
   final messenger = ScaffoldMessenger.of(context);
-  // Settings are absent in tests and standalone hosts; fall back to the
-  // default download directory.
   final Settings? settings = trySettingsOf(context);
   try {
-    final directory =
-        settings?.downloadPath.value ?? await getDefaultDownloadPath();
+    final String? directory = settings?.downloadPath.value;
     final fileName = '${postDownloadBase(post)}.txt';
     final temporary = File(
       join((await getTemporaryDirectory()).path, 'tag-export', fileName),

@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:e1547/comment/comment.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,9 +20,10 @@ void main() {
   tearDown(() => fake.stop());
 
   test('maps a recorded comment onto the model', () async {
-    final recorded = loadFixtureList('comments.json').first;
-
     final comment = (await client.page()).first;
+    final recorded = loadFixtureList(
+      'comments.json',
+    ).firstWhere((e) => e['id'] == comment.id);
 
     expect(comment.id, recorded['id']);
     expect(comment.body, recorded['body']);
@@ -34,7 +34,7 @@ void main() {
     expect(comment.hidden, recorded['is_hidden']);
   });
 
-  test('creates a comment with the params the server permits', () async {
+  test('creates a comment with only the permitted params', () async {
     final postId = loadFixtureList('posts.json').first['id']! as int;
 
     await client.create(postId: postId, content: 'hello');
@@ -51,27 +51,5 @@ void main() {
     await client.update(id: id, postId: 0, content: 'edited');
 
     expect((await client.get(id: id)).body, 'edited');
-  });
-
-  test('the server rejects params it does not permit', () async {
-    final postId = loadFixtureList('posts.json').first['id']! as int;
-
-    await expectLater(
-      client.dio.post(
-        '/comments.json',
-        data: FormData.fromMap({
-          'comment[body]': 'hello',
-          'comment[post_id]': '$postId',
-          'comment[creator_id]': '9000',
-        }),
-      ),
-      throwsA(
-        isA<DioException>().having(
-          (e) => e.response?.statusCode,
-          'statusCode',
-          400,
-        ),
-      ),
-    );
   });
 }

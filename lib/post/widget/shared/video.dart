@@ -68,7 +68,7 @@ class VideoButton extends StatelessWidget {
                       secondChild: const Center(
                         child: Padding(
                           padding: EdgeInsets.all(8),
-                          child: CircularProgressIndicator(),
+                          child: HexagonalLoadingIndicator(),
                         ),
                       ),
                       child: SubValue<StreamSubscription<bool>>(
@@ -131,6 +131,21 @@ class _VideoBarState extends State<VideoBar> {
   @override
   void initState() {
     super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.player == widget.player) return;
+    for (final s in subscriptions) {
+      s.cancel();
+    }
+    subscriptions.clear();
+    _subscribe();
+  }
+
+  void _subscribe() {
     playing = widget.player.state.playing;
     position = widget.player.state.position;
     duration = widget.player.state.duration;
@@ -237,7 +252,7 @@ class _VideoBarState extends State<VideoBar> {
                 children: [
                   const VideoServiceVolumeControl(),
                   const SizedBox(width: 4),
-                  Text(position.toString().substring(2, 7)),
+                  Text(videoTime(position)),
                   Flexible(
                     child: Slider(
                       max: duration.inMilliseconds.toDouble(),
@@ -270,7 +285,7 @@ class _VideoBarState extends State<VideoBar> {
                       },
                     ),
                   ),
-                  Text(duration.toString().substring(2, 7)),
+                  Text(videoTime(duration)),
                   const SizedBox(width: 4),
                   InkWell(
                     onTap: Navigator.of(context).maybePop,
@@ -329,6 +344,19 @@ Duration videoSeekTarget({
   return target;
 }
 
+String videoTime(Duration duration) {
+  final String minutes = duration.inMinutes
+      .remainder(60)
+      .toString()
+      .padLeft(2, '0');
+  final String seconds = duration.inSeconds
+      .remainder(60)
+      .toString()
+      .padLeft(2, '0');
+  if (duration.inHours > 0) return '${duration.inHours}:$minutes:$seconds';
+  return '$minutes:$seconds';
+}
+
 class VideoGesture extends StatefulWidget {
   const VideoGesture({super.key, required this.forward, required this.player});
 
@@ -351,6 +379,13 @@ class _VideoGestureState extends State<VideoGesture>
   );
   int combo = 0;
   Timer? comboReset;
+
+  @override
+  void dispose() {
+    comboReset?.cancel();
+    animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -498,17 +533,18 @@ class PostVideoRouteState extends State<PostVideoRoute> {
   void keepPlaying() => _keepPlaying = true;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _wasPlaying = player?.state.playing ?? false;
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _lease();
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void didUpdateWidget(covariant PostVideoRoute oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post != widget.post) _lease();
+  }
+
+  void _lease() {
     VideoPlayer? next = widget.post.getVideo(context);
     if (next == player) return;
     if (player case VideoPlayer previous) {
@@ -517,9 +553,13 @@ class PostVideoRouteState extends State<PostVideoRoute> {
       _videos?.release(previous);
     }
     player = next;
+    _wasPlaying = false;
     if (next != null) {
       _videos = context.read<VideoService>();
       _videos!.acquire(next);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && player == next) _wasPlaying = next.state.playing;
+      });
     }
   }
 
@@ -539,7 +579,8 @@ class PostVideoRouteState extends State<PostVideoRoute> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) =>
+      KeyedSubtree(key: ValueKey(widget.post.id), child: widget.child);
 }
 
 class PostVideoWidget extends StatelessWidget {

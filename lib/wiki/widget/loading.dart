@@ -16,12 +16,13 @@ class WikiLoadingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final wikis = context.watch<Client>().wikis;
     final id = this.id;
+    final query = id != null
+        ? wikis.useGet(id: id)
+        : wikis.useGetByTitle(title: title!);
     return QueryBuilder(
-      query: id != null
-          ? wikis.useGet(id: id)
-          : wikis.useGetByTitle(title: title!),
+      query: query,
       builder: (context, state) => LoadingPage(
-        isLoading: state.isLoading,
+        isLoading: state.isLoading || state.isInitial,
         isError: state.isError,
         isEmpty: state.data == null,
         loadingBuilder: (context, child) => Scaffold(
@@ -35,7 +36,9 @@ class WikiLoadingPage extends StatelessWidget {
           ),
           body: child(context),
         ),
+        skeleton: (context) => const WikiPage(wiki: WikiGhost()),
         onError: Text('Failed to load wiki'.tr),
+        onRetry: query.invalidate,
         onEmpty: Text('Wiki not found'.tr),
         child: (context) => WikiPage(wiki: state.data!),
       ),

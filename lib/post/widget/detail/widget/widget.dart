@@ -6,6 +6,7 @@ export 'description.dart';
 export 'file.dart';
 export 'likes.dart';
 export 'pools.dart';
+export 'recommendations.dart';
 export 'relation.dart';
 export 'relationships.dart';
 export 'sources.dart';

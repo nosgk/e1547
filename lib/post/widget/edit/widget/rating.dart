@@ -68,27 +68,3 @@ class RatingEditDisplay extends StatelessWidget {
     );
   }
 }
-
-Future<Rating?> showRatingDialog({
-  required BuildContext context,
-  ValueChanged<Rating>? onSelected,
-}) async {
-  return showDialog<Rating>(
-    context: context,
-    builder: (context) => SimpleDialog(
-      title: Text('Rating'.tr),
-      children: Rating.values
-          .map(
-            (rating) => ListTile(
-              title: Text(rating.title),
-              leading: rating.icon,
-              onTap: () {
-                onSelected?.call(rating);
-                Navigator.of(context).pop(rating);
-              },
-            ),
-          )
-          .toList(),
-    ),
-  );
-}

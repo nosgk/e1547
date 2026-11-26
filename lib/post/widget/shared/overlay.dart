@@ -1,7 +1,22 @@
 import 'package:e1547/app/app.dart';
+import 'package:e1547/client/client.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
+
+IconData _postUnavailableIcon(BuildContext context) =>
+    context.watch<Client>().hasLogin ? Icons.hide_image_outlined : Icons.lock;
+
+const IconData _postDeletedIcon = Icons.delete;
+
+const IconData _postUnsupportedIcon = Icons.open_in_new;
+
+IconData? postFileIcon(BuildContext context, PostSummary post) {
+  if (post.isDeleted) return _postDeletedIcon;
+  if (post.file == null) return _postUnavailableIcon(context);
+  if (post.type == PostType.unsupported) return _postUnsupportedIcon;
+  return null;
+}
 
 class PostImageOverlay extends StatelessWidget {
   const PostImageOverlay({
@@ -19,13 +34,13 @@ class PostImageOverlay extends StatelessWidget {
       if (post.isDeleted) {
         return IconMessage(
           title: Text('Post was deleted'.tr),
-          icon: const Icon(Icons.delete_outlined),
+          icon: const Icon(_postDeletedIcon),
         );
       }
 
       return IconMessage(
         title: Text('Post is unavailable'.tr),
-        icon: const Icon(Icons.no_adult_content),
+        icon: Icon(_postUnavailableIcon(context)),
       );
     }
 
@@ -40,7 +55,7 @@ class PostImageOverlay extends StatelessWidget {
     if (post.type == PostType.unsupported) {
       return IconMessage(
         title: Text('{ext} files are not supported'.trArgs({'ext': post.ext})),
-        icon: const Icon(Icons.image_not_supported_outlined),
+        icon: const Icon(_postUnsupportedIcon),
         action: Padding(
           padding: const EdgeInsets.all(4),
           child: TextButton(

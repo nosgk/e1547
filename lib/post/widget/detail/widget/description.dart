@@ -29,7 +29,7 @@ class DescriptionDisplay extends StatelessWidget {
                         TranslationOriginal(
                           category: TranslationCategory.description,
                           entry: translation,
-                          original: DText(post.description),
+                          original: DTextFold(text: post.description),
                         ),
                         TranslationDisplay(
                           entry: translation,

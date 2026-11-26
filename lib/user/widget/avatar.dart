@@ -41,60 +41,42 @@ class UserAvatar extends StatelessWidget {
   final int userId;
   final bool hasCroppedAvatar;
   final double radius;
-
-  /// Custom tap behavior; defaults to opening the avatar post.
   final VoidCallback? onTap;
 
-  String? _resolve(Post? post) {
-    if (post == null) return null;
-    if (hasCroppedAvatar && !post.isDeleted) {
-      String? reference = post.sample ?? post.preview ?? post.file;
-      if (reference != null) {
-        String? url = croppedAvatarUrl(
-          reference: reference,
-          userId: userId,
-          avatarId: post.id,
-        );
-        if (url != null) return url;
-      }
-    }
-    return post.sample;
-  }
+  String? _cropped(int id, String? reference) =>
+      !hasCroppedAvatar || reference == null
+      ? null
+      : croppedAvatarUrl(reference: reference, userId: userId, avatarId: id);
 
   @override
   Widget build(BuildContext context) {
-    final id = this.id;
-    if (id == null) {
-      return EmptyAvatar(radius: radius);
-    }
-    final client = context.watch<Client>();
+    final int? id = this.id;
+    if (id == null) return Avatar(null, radius: radius, onTap: onTap);
+    final VoidCallback open = onTap ?? () => pushPostLoadingPage(context, id);
+    final Client client = context.watch<Client>();
     return QueryBuilder(
       query: client.posts.useGet(id: id),
       builder: (context, state) {
-        final post = state.data;
+        final Post? post = state.data;
         return Avatar(
-          _resolve(post),
+          switch (post) {
+            null => null,
+            final post when !post.isDeleted =>
+              _cropped(id, post.sample ?? post.preview ?? post.file) ??
+                  post.sample,
+            final post => post.sample,
+          },
           radius: radius,
-          onTap: onTap ?? _openPost(context, post),
+          onTap: onTap ?? (post == null ? null : open),
         );
       },
     );
   }
-
-  VoidCallback? _openPost(BuildContext context, Post? post) {
-    if (post == null) return null;
-    return () => Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => PostDetail(post: post)));
-  }
 }
 
-/// Avatar of the user with [userId]. The user record is read from the
-/// vendored cache; ids missing from the cache are reported to the
-/// [UserBatcher], which coalesces them into batched requests (comment
-/// sections would otherwise fire one request per visible avatar). Falls
-/// back to the empty avatar while loading or when the user has no avatar.
-/// Used wherever only a user id is known (comments, forum).
+/// Avatar of the user with [userId]. Defaults to opening the user's page;
+/// [onTap] overrides that behavior. Uses upstream's summary loader rather
+/// than the fork's local batching logic.
 class UserIdAvatar extends StatelessWidget {
   const UserIdAvatar({
     super.key,
@@ -105,36 +87,49 @@ class UserIdAvatar extends StatelessWidget {
 
   final int userId;
   final double radius;
-
-  /// Custom tap behavior; defaults to opening the user's page.
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final client = context.watch<Client>();
+    return UserSummaryAvatar(
+      userId: userId,
+      radius: radius,
+      onTap:
+          onTap ??
+          () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => UserLoadingPage(userId)),
+          ),
+    );
+  }
+}
+
+class UserSummaryAvatar extends StatelessWidget {
+  const UserSummaryAvatar({
+    super.key,
+    required this.userId,
+    this.radius = 20,
+    this.onTap,
+  });
+
+  final int userId;
+  final double radius;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isSkeleton(context)) {
+      return Bone.circle(size: radius * 2);
+    }
+    final Client client = context.watch<Client>();
     return QueryBuilder(
-      query: client.users.useGet(id: userId, vendored: true),
-      builder: (context, state) {
-        final user = state.data;
-        if (user == null) {
-          // Cache miss: queue a batched fetch; the cache write-back below
-          // rebuilds this builder with the user.
-          client.users.batcher.request(userId);
-        }
-        return UserAvatar(
-          id: user?.avatarId,
-          userId: userId,
-          hasCroppedAvatar: user?.hasCroppedAvatar ?? false,
-          radius: radius,
-          onTap:
-              onTap ??
-              () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => UserLoadingPage(userId),
-                ),
-              ),
-        );
-      },
+      query: client.users.usePartial(id: userId),
+      builder: (context, state) => UserAvatar(
+        id: state.data?.avatarId,
+        userId: userId,
+        hasCroppedAvatar: state.data?.hasCroppedAvatar ?? false,
+        radius: radius,
+        onTap: onTap,
+      ),
     );
   }
 }
@@ -172,38 +167,33 @@ class Avatar extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
-    if (url case final url?) {
-      return MouseCursorRegion(
-        onTap: onTap,
-        child: Container(
-          decoration: const BoxDecoration(shape: BoxShape.circle),
-          clipBehavior: Clip.antiAlias,
-          width: radius * 2,
-          height: radius * 2,
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            cacheManager: context.read<BaseCacheManager>(),
-            memCacheWidth: (radius * 2 * MediaQuery.devicePixelRatioOf(context))
-                .round()
-                .clamp(1, 256),
-            memCacheHeight:
-                (radius * 2 * MediaQuery.devicePixelRatioOf(context))
-                    .round()
-                    .clamp(1, 256),
-            placeholder: (context, url) => EmptyAvatar(radius: radius),
-            errorWidget: (context, url, error) =>
-                const Center(child: Icon(Icons.warning_amber)),
-            fadeInDuration: Duration.zero,
-            fadeOutDuration: Duration.zero,
-          ),
+  Widget build(BuildContext context) => MouseCursorRegion(
+    onTap: onTap,
+    child: switch (url) {
+      final url? => Container(
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        clipBehavior: Clip.antiAlias,
+        width: radius * 2,
+        height: radius * 2,
+        child: CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          cacheManager: context.read<BaseCacheManager>(),
+          memCacheWidth: (radius * 2 * MediaQuery.devicePixelRatioOf(context))
+              .round()
+              .clamp(1, 256),
+          memCacheHeight: (radius * 2 * MediaQuery.devicePixelRatioOf(context))
+              .round()
+              .clamp(1, 256),
+          placeholder: (context, url) => EmptyAvatar(radius: radius),
+          errorWidget: (context, url, error) => EmptyAvatar(radius: radius),
+          fadeInDuration: Duration.zero,
+          fadeOutDuration: Duration.zero,
         ),
-      );
-    } else {
-      return EmptyAvatar(radius: radius);
-    }
-  }
+      ),
+      null => EmptyAvatar(radius: radius),
+    },
+  );
 }
 
 class EmptyAvatar extends StatelessWidget {

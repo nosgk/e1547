@@ -1,10 +1,13 @@
+import 'dart:convert';
+
 import 'package:e1547/app/app.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/settings/settings.dart';
 import 'package:e1547/shared/shared.dart';
+import 'package:e1547/tag/tag.dart';
 import 'package:flutter/material.dart';
 
-extension PostTagging on Post {
+extension PostTagging on PostSummary {
   bool hasTag(String tag) {
     if (tag.trim().isEmpty) return false;
 
@@ -63,12 +66,7 @@ extension PostTagging on Post {
         case 'tagcount':
           NumberRange? range = NumberRange.tryParse(value);
           if (range == null) return false;
-          return range.has(
-            tags.values.fold<int>(
-              0,
-              (previousValue, element) => previousValue + element.length,
-            ),
-          );
+          return range.has(allTags.length);
       }
     }
 
@@ -76,10 +74,10 @@ extension PostTagging on Post {
       final RegExp pattern = RegExp(
         '^${RegExp.escape(tag.toLowerCase()).replaceAll(r'\*', '.*')}\$',
       );
-      return tags.values.any((category) => category.any(pattern.hasMatch));
+      return allTags.any(pattern.hasMatch);
     }
 
-    return tags.values.any((category) => category.contains(tag.toLowerCase()));
+    return allTags.contains(tag.toLowerCase());
   }
 }
 
@@ -101,7 +99,7 @@ String _sizeToBytes(String value) => value.replaceAllMapped(_sizeUnit, (match) {
 
 final RegExp _tagPrefix = RegExp(r'^[~-]+');
 
-extension PostDenying on Post {
+extension PostDenying on PostSummary {
   bool isDeniedBy(List<String> denylist) =>
       getDeniers(denylist).iterator.moveNext();
 
@@ -164,7 +162,7 @@ extension PostDenying on Post {
 
 enum PostType { image, video, unsupported }
 
-extension PostTyping on Post {
+extension PostTyping on PostSummary {
   PostType get type {
     switch (ext) {
       case 'mp4':
@@ -214,6 +212,17 @@ extension PostVideoPlaying on Post {
       return service.getVideo(closestUrl);
     }
     return null;
+  }
+}
+
+extension PostDownloading on Post {
+  String get downloadFileName {
+    final String file = '$id.$ext';
+    final List<String> artists = filterArtists(tags['artist'] ?? const []);
+    if (artists.isEmpty) return file;
+    final String named = '${artists.join(', ')} - $file';
+    if (utf8.encode(named).length > 255) return file;
+    return named;
   }
 }
 

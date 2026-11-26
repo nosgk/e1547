@@ -13,21 +13,23 @@ class PostDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TransparentAppBar(
-      child: DefaultAppBar(
-        actions: [
-          // Scoped tag translation toggle, with a small "Translated by …"
-          // caption naming the configured service while active.
-          const TagTranslationToggle(),
-          PopupMenuButton<VoidCallback>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) => value(),
-            itemBuilder: (context) => [
-              ...postMenuPostActions(context, post),
-              ...postMenuUserActions(context, post),
-            ],
-          ),
-        ],
+    return DismissFade(
+      child: TransparentAppBar(
+        child: DefaultAppBar(
+          actions: [
+            // Scoped tag translation toggle, with a small "Translated by …"
+            // caption naming the configured service while active.
+            const TagTranslationToggle(),
+            PopupMenuButton<VoidCallback>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) => value(),
+              itemBuilder: (context) => [
+                ...postMenuPostActions(context, post),
+                ...postMenuUserActions(context, post),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

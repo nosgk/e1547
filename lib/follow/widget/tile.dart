@@ -46,12 +46,18 @@ class FollowTile extends StatelessWidget {
       promptController!.show(
         context,
         EditTagPrompt(
-          onSubmit: (value) {
+          onSubmit: (value) async {
             value = value.trim();
             if (value.isNotEmpty) {
-              client.follows.update(id: follow.id, tags: value);
+              try {
+                await client.follows.update(id: follow.id, tags: value);
+              } on FollowTagsTakenException {
+                throw const ActionControllerException(
+                  message: 'Already followed',
+                );
+              }
             } else {
-              client.follows.delete(follow.id);
+              await client.follows.delete(follow.id);
             }
           },
           actionController: promptController,
@@ -236,7 +242,7 @@ class FollowTile extends StatelessWidget {
                               showChild: follow.type == FollowType.notify,
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 4),
-                                child: follow.type.icon,
+                                child: Icon(follow.type.icon),
                               ),
                             ),
                             Expanded(

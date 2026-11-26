@@ -1,7 +1,6 @@
 import 'package:e1547/client/client.dart';
 import 'package:e1547/post/post.dart';
 import 'package:e1547/shared/shared.dart';
-import 'package:e1547/tag/tag.dart';
 import 'package:e1547/task/task.dart';
 import 'package:flutter/material.dart';
 
@@ -21,7 +20,7 @@ Future<void> postDownloadingNotification(
         metadata: TaskMetadata(
           previewUrl: post.preview,
           fileUrl: post.file,
-          fileName: _downloadFileName(post),
+          fileName: post.downloadFileName,
         ),
       ),
     ),
@@ -63,13 +62,4 @@ Future<void> postFavoritingNotification(
       ),
     ),
   );
-}
-
-String _downloadFileName(Post post) {
-  String filename = '';
-  final List<String> artists = filterArtists(post.tags['artist'] ?? const []);
-  if (artists.isNotEmpty) {
-    filename = '${artists.join(', ')} - ';
-  }
-  return filename += '${post.id}.${post.ext}';
 }

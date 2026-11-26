@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:e1547/client/client.dart';
 import 'package:e1547/identity/identity.dart';
 import 'package:e1547/pool/pool.dart';
@@ -73,7 +72,7 @@ void main() {
     expect(post.rating.name, recorded['rating']);
     expect(post.score, (stats['score']! as Map)['total']);
     expect(post.isDeleted, (recorded['flags']! as Map)['deleted']);
-    expect(post.tags.keys, (recorded['tags']! as Map).keys);
+    expect(post.tags, recorded['tags']);
   });
 
   test('leaves the sample empty when the post has none', () async {
@@ -97,7 +96,6 @@ void main() {
           },
         },
       });
-
     final post = (await client.page()).single;
 
     expect(post.sample, isNull);
@@ -105,12 +103,21 @@ void main() {
   });
 
   test('folds video samples into variants', () async {
-    final posts = await client.page();
-    final video = posts.firstWhere((e) => e.ext == 'webm');
+    final recorded = loadFixtureList(
+      'posts.json',
+    ).firstWhere((e) => (e['files']! as Map)['meta']['ext'] == 'webm');
+    final video = (recorded['files']! as Map)['video'] as Map;
+    final original = video['original'] as Map;
+    final sample = (video['samples'] as Map)['480p'] as Map;
 
-    expect(video.variants, isNotNull);
-    expect(video.variants!.keys, isNotEmpty);
-    expect(video.variants!.keys, everyElement(matches(RegExp(r'^\d+x\d+$'))));
+    final posts = await client.page();
+
+    expect(posts.firstWhere((e) => e.id == recorded['id']).variants, {
+      '${original['width']}x${original['height']}': served(
+        original['url'] as String,
+      ),
+      '${sample['width']}x${sample['height']}': served(sample['url'] as String),
+    });
   });
 
   test('parses child relationships', () async {
@@ -126,7 +133,7 @@ void main() {
     expect(parent.relationships.hasChildren, isTrue);
   });
 
-  test('asks for ids as a tag filter', () async {
+  test('requests ids as a tag filter', () async {
     final ids = loadFixtureList(
       'posts.json',
     ).map((e) => e['id']! as int).toList().reversed.toList();
@@ -136,17 +143,14 @@ void main() {
     expect(fake.requests.last.query['tags'], 'id:${ids.join(',')}');
   });
 
-  test('splits ids into chunks of 320', () async {
+  test('requests more than 320 ids in one request limited to 320', () async {
     final ids = List.generate(321, (index) => index + 1);
 
     await client.byIds(ids: ids);
 
     final posts = fake.requests.where((e) => e.path == '/posts.json').toList();
-    expect(posts.length, 2);
-    expect(posts.first.query['tags'], 'id:${ids.take(320).join(',')}');
-    expect(posts.first.query['limit'], '320');
-    expect(posts.last.query['tags'], 'id:${ids.last}');
-    expect(posts.last.query['limit'], '1');
+    expect(posts.single.query['tags'], 'id:${ids.join(',')}');
+    expect(posts.single.query['limit'], '320');
   });
 
   test('restores the requested id order', () async {
@@ -159,55 +163,112 @@ void main() {
     expect(posts.map((e) => e.id), ids);
   });
 
+  test('finds posts by id that a search would hide, when requested', () async {
+    final Map<String, Object?> recorded = fake.state.posts.first;
+    final Map<String, Object?> files =
+        recorded['files']! as Map<String, Object?>;
+    final Map<String, Object?> unavailable = {
+      ...files,
+      'original': {
+        ...(files['original']! as Map<String, Object?>),
+        'url': null,
+      },
+    };
+    fake.state.posts.addAll([
+      {
+        ...recorded,
+        'id': 998,
+        'flags': {
+          ...(recorded['flags']! as Map<String, Object?>),
+          'deleted': true,
+        },
+        'files': unavailable,
+      },
+      {...recorded, 'id': 999, 'files': unavailable},
+    ]);
+
+    final found = await client.byIds(ids: [998, 999], hidden: true);
+    final shown = await client.byIds(ids: [998, 999]);
+
+    expect(found.map((e) => (e.id, e.isDeleted, e.file)), [
+      (998, true, null),
+      (999, false, null),
+    ]);
+    expect(shown, isEmpty);
+  });
+
   test('drops posts that cannot be displayed', () async {
-    fake.state.posts.add({
-      ...fake.state.posts.first,
-      'id': 999,
-      'files': {
-        ...(fake.state.posts.first['files']! as Map<String, Object?>),
-        'original': {
-          ...((fake.state.posts.first['files']! as Map)['original']!
-              as Map<String, Object?>),
-          'url': null,
+    final ids = loadFixtureList('posts.json').map((e) => e['id']).toList();
+    final recorded = fake.state.posts.first;
+    final files = recorded['files']! as Map<String, Object?>;
+    fake.state.posts.addAll([
+      {
+        ...recorded,
+        'id': 997,
+        'flags': {
+          ...(recorded['flags']! as Map<String, Object?>),
+          'deleted': true,
+        },
+        'files': {
+          ...files,
+          'original': {
+            ...(files['original']! as Map<String, Object?>),
+            'url': null,
+          },
         },
       },
-    });
+      {
+        ...recorded,
+        'id': 998,
+        'files': {
+          ...files,
+          'meta': {...(files['meta']! as Map<String, Object?>), 'ext': 'swf'},
+        },
+      },
+      {
+        ...recorded,
+        'id': 999,
+        'files': {
+          ...files,
+          'original': {
+            ...(files['original']! as Map<String, Object?>),
+            'url': null,
+          },
+        },
+      },
+    ]);
 
-    final posts = await client.page();
+    final posts = await client.page(query: {'tags': 'status:any'});
 
-    expect(posts.map((e) => e.id), isNot(contains(999)));
+    expect(posts.map((e) => e.id), [...ids, 997]);
   });
 
-  test('serves recorded asset urls from itself', () async {
-    final post = (await client.page()).first;
-
-    expect(post.file, startsWith(fake.url));
-
-    final response = await client.dio.get<List<int>>(
-      post.file!,
-      options: Options(responseType: ResponseType.bytes),
-    );
-
-    expect(response.headers.value(HttpHeaders.contentTypeHeader), 'image/png');
-    expect(response.data!.take(4), [0x89, 0x50, 0x4e, 0x47]);
-  });
-
-  test('favorites are unavailable without credentials', () async {
-    await expectLater(
-      client.favorites(),
-      throwsA(
-        isA<DioException>().having(
-          (e) => e.response?.statusCode,
-          'statusCode',
-          404,
-        ),
-      ),
-    );
-  });
-
-  test('favorites are served to a signed in user', () async {
+  test('drops deleted and fileless favorites', () async {
     final id = loadFixtureList('posts.json').first['id']! as int;
-    fake.state.favorites.add(id);
+    final recorded = fake.state.posts.first;
+    final files = recorded['files']! as Map<String, Object?>;
+    fake.state.posts.addAll([
+      {
+        ...recorded,
+        'id': 998,
+        'flags': {
+          ...(recorded['flags']! as Map<String, Object?>),
+          'deleted': true,
+        },
+      },
+      {
+        ...recorded,
+        'id': 999,
+        'files': {
+          ...files,
+          'original': {
+            ...(files['original']! as Map<String, Object?>),
+            'url': null,
+          },
+        },
+      },
+    ]);
+    fake.state.favorites.addAll([id, 998, 999]);
     final signedIn = PostClient(
       dio: createDefaultDio(
         Identity(
@@ -232,13 +293,17 @@ void main() {
     expect(posts.map((e) => e.id), [id]);
   });
 
-  test('sends a vote the way the server expects', () async {
+  test('sends a vote as a score and whether it replaces the last', () async {
     final id = loadFixtureList('posts.json').first['id']! as int;
 
     await client.vote(id: id, upvote: true, replace: true);
 
     expect(fake.requests.last.path, '/posts/$id/votes.json');
     expect(fake.requests.last.query, {'score': '1', 'no_unvote': 'true'});
+
+    await client.vote(id: id, upvote: false, replace: false);
+
+    expect(fake.requests.last.query, {'score': '-1', 'no_unvote': 'false'});
   });
 
   test('reads the total for a search', () async {

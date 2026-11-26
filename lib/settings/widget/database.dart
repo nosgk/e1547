@@ -126,7 +126,7 @@ class DatabaseExportTile extends StatelessWidget {
                 child: SizedBox(
                   height: 28,
                   width: 28,
-                  child: CircularProgressIndicator(),
+                  child: HexagonalLoadingIndicator(),
                 ),
               ),
               Padding(
@@ -303,7 +303,7 @@ class DatabaseImportTile extends StatelessWidget {
                 child: SizedBox(
                   height: 28,
                   width: 28,
-                  child: CircularProgressIndicator(),
+                  child: HexagonalLoadingIndicator(),
                 ),
               ),
               Padding(
@@ -315,17 +315,34 @@ class DatabaseImportTile extends StatelessWidget {
         ),
       );
 
+      final dbPath = await getAppDatabasePath();
+      // Upstream validates a staged copy before it replaces the live DB.
+      // Read the fork's preferences backup from that staged copy (not the
+      // original file), then apply it after validation succeeds.
       try {
-        driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
-        final importDb = AppDatabase(
-          driftDatabase(
-            name: 'import',
-            native: DriftNativeOptions(databasePath: () async => path),
+        await stageDbImport(path, '$dbPath.new');
+      } on DatabaseImportException catch (e) {
+        navigator.pop();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Invalid database file: {error}'.trArgs({'error': e.inner}),
+            ),
           ),
         );
-        await importDb.customSelect('SELECT 1').get();
+        _logger.warn('Database validation failed', null, e.inner);
+        return;
+      }
+
+      driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+      final importDb = AppDatabase(
+        driftDatabase(
+          name: 'import',
+          native: DriftNativeOptions(databasePath: () async => '$dbPath.new'),
+        ),
+      );
+      try {
         preferencesBackup = await readPreferencesBackup(importDb);
-        await importDb.close();
       } on Exception catch (e) {
         navigator.pop();
         messenger.showSnackBar(
@@ -338,13 +355,9 @@ class DatabaseImportTile extends StatelessWidget {
         _logger.warn('Database validation failed', null, e);
         return;
       } finally {
+        await importDb.close();
         driftRuntimeOptions.dontWarnAboutMultipleDatabases = false;
       }
-
-      final importFile = File(path);
-      final dbPath = await getAppDatabasePath();
-      final newDbPath = '$dbPath.new';
-      await importFile.copy(newDbPath);
 
       // Restore the app settings embedded in the backup, if any. The
       // restart below reloads them.

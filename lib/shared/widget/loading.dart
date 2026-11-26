@@ -1,34 +1,6 @@
 import 'package:e1547/shared/shared.dart';
 import 'package:flutter/material.dart';
 
-class SizedCircularProgressIndicator extends StatelessWidget {
-  const SizedCircularProgressIndicator({
-    super.key,
-    required this.size,
-    this.value,
-    this.strokeWidth = 4,
-  });
-
-  final double size;
-  final double? value;
-  final double strokeWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: size,
-      width: size,
-      child: Padding(
-        padding: EdgeInsets.all(strokeWidth / 2),
-        child: CircularProgressIndicator(
-          value: value,
-          strokeWidth: strokeWidth,
-        ),
-      ),
-    );
-  }
-}
-
 class IconMessage extends StatelessWidget {
   const IconMessage({
     super.key,
@@ -73,10 +45,6 @@ class IconMessage extends StatelessWidget {
   }
 }
 
-/// Similar to [TransitionBuilder] except that child is guaranteed to be non-null.
-typedef WidgetChildBuilder =
-    Widget Function(BuildContext context, Widget child);
-
 enum LoadingPageState { loading, empty, error, done }
 
 class LoadingPage extends StatelessWidget {
@@ -89,11 +57,14 @@ class LoadingPage extends StatelessWidget {
     this.isBuilt,
     this.pageBuilder,
     this.loadingBuilder,
+    this.skeleton,
     this.onEmpty,
     this.onError,
+    required this.onRetry,
   });
 
   final WidgetBuilder child;
+  final WidgetBuilder? skeleton;
   final Widget Function(BuildContext context, WidgetBuilder child)? pageBuilder;
   final Widget Function(BuildContext context, WidgetBuilder child)?
   loadingBuilder;
@@ -103,6 +74,8 @@ class LoadingPage extends StatelessWidget {
 
   /// Title shown inside the failed state's [IconMessage].
   final Widget? onError;
+
+  final VoidCallback? onRetry;
   final bool isLoading;
   final bool isEmpty;
   final bool isError;
@@ -123,14 +96,19 @@ class LoadingPage extends StatelessWidget {
       }
     }
 
+    if (skeleton case final skeleton? when state == LoadingPageState.loading) {
+      return SkeletonPage(child: Builder(builder: skeleton));
+    }
+
     Widget content(BuildContext context) {
       switch (state) {
         case LoadingPageState.loading:
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: HexagonalLoadingIndicator());
         case LoadingPageState.error:
           return IconMessage(
             icon: const Icon(Icons.warning_amber_outlined),
             title: onError ?? Text('Failed to load'.tr),
+            action: PagedChildBuilderRetryButton(onRetry),
           );
         case LoadingPageState.empty:
           return IconMessage(
@@ -153,7 +131,12 @@ class LoadingPage extends StatelessWidget {
       return body ?? content(context);
     }
 
-    return Material(child: body());
+    return Material(
+      type: state == LoadingPageState.done
+          ? MaterialType.transparency
+          : MaterialType.canvas,
+      child: body(),
+    );
   }
 }
 
@@ -193,6 +176,7 @@ class AsyncLoadingPage<T> extends StatelessWidget {
       isBuilt: isBuilt,
       onEmpty: onEmpty,
       onError: onError,
+      onRetry: null,
     );
   }
 }
