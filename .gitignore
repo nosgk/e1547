@@ -138,3 +138,6 @@ app.*.symbols
 # local credentials
 .env
 .env.*
+
+# local-only development plans (never commit: may leak internal implementation notes)
+/plan/

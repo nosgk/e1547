@@ -1,0 +1,64 @@
+name: Build Android arm64 Debug APK
+
+# 手动触发：不会因推送自动构建。
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "要构建的 ref（分支名、标签或提交哈希；默认当前分支）"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: android-arm64-debug-${{ github.ref }}-${{ inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build arm64-v8a debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup actions
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: parse flutter version
+        run: |
+          export FLUTTER_VERSION=$(./.github/workflows/get_flutter_version.sh)
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> $GITHUB_ENV
+
+      - name: setup flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: get flutter dependencies
+        run: flutter pub get
+
+      - name: build arm64 debug APK
+        run: flutter build apk --debug --target-platform android-arm64
+
+      - name: package APK
+        run: |
+          source=build/app/outputs/apk/debug/app-arm64-v8a-debug.apk
+          test -f "$source"
+          cp "$source" e1547-arm64-v8a-debug.apk
+          sha256sum e1547-arm64-v8a-debug.apk > e1547-arm64-v8a-debug.sha256
+
+      - name: upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: debug-apk-arm64
+          path: |
+            e1547-arm64-v8a-debug.apk
+            e1547-arm64-v8a-debug.sha256
+          if-no-files-found: error

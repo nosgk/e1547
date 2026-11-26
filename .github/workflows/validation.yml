@@ -1,10 +1,8 @@
 name: Application Validation
 
+# 仅手动触发；推送不再自动跑验证，避免与开发中的分支互相干扰。
 on:
-  push:
-    branches: [master]
-  pull_request:
-  workflow_call:
+  workflow_dispatch:
 
 concurrency:
   group: validation-${{ github.ref }}
