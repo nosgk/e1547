@@ -19,6 +19,7 @@ class PostPageAppBar extends StatelessWidget implements PreferredSizeWidget {
     final map = TagMap(context.watch<PostParamsController>().value.tags);
     final showInfo =
         map.isNotEmpty && map['order'] != 'rank' && map['fav'] == null;
+    final showShare = map.isNotEmpty && map['fav'] == null;
 
     return DefaultAppBar(
       title: const Row(
@@ -28,6 +29,7 @@ class PostPageAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        if (showShare) const _PostPageShareButton(),
         if (showInfo) const _PostPageInfoButton(),
         ...?actions,
         const ContextDrawerButton(),
@@ -37,6 +39,22 @@ class PostPageAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+/// Shares the current search as its canonical e621 web URL, so links opened
+/// on any device land on the same feed (inbound parsing accepts them back).
+class _PostPageShareButton extends StatelessWidget {
+  const _PostPageShareButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final params = context.watch<PostParamsController>().value;
+    return IconButton(
+      tooltip: 'Share search'.tr,
+      icon: const Icon(Icons.ios_share),
+      onPressed: () => Share.text(context, PostSearchUrlCodec.encode(params)),
+    );
+  }
 }
 
 class _PostPageInfoButton extends StatelessWidget {
@@ -88,10 +106,11 @@ class _PostPageTitle extends StatelessWidget {
 
     final uploader = map['user'];
     if (uploader != null) {
-      return Text(
+      return _title(
+        context,
         uploader == client.identity.username
-            ? 'Uploads'
-            : "$uploader's Uploads",
+            ? 'Uploads'.tr
+            : "{uploader}'s Uploads".trArgs({'uploader': uploader}),
       );
     }
 
@@ -156,24 +175,34 @@ class _PostSearchCount extends StatelessWidget {
   }
 
   Widget _count(BuildContext context, int? value, bool capped) {
-    if (value == null) return const SizedBox.shrink();
+    // The title row reserves the slot for the whole load, so the label
+    // appearing never pushes the toolbar around (no layout shift).
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 140),
-        child: Text(
-          '{count} results'.trArgs({
-            'count':
-                NumberFormat.decimalPattern().format(value) +
-                (capped ? '+' : ''),
-          }),
-          maxLines: 1,
-          overflow: TextOverflow.fade,
-          softWrap: false,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
-        ),
+        child: value == null
+            ? Text(
+                '…',
+                maxLines: 1,
+                softWrap: false,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+              )
+            : Text(
+                '{count} results'.trArgs({
+                  'count':
+                      NumberFormat.decimalPattern().format(value) +
+                      (capped ? '+' : ''),
+                }),
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: dimTextColor(context)),
+              ),
       ),
     );
   }

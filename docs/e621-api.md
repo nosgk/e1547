@@ -62,8 +62,11 @@ rg -n -i "post_count|name_matches" Temp/api_doc.txt
 
 - **没有类别前缀 metatag**：`species:`/`artist:` 这类写法不存在——按类别搜索就直接写 tag 本身（`dragon`）
 - 每次搜索 ≤40 个 tag 且 **metatag 计入上限**；`status:` 每个分组限 1 个
+- `status:` 实测合法值（2026-11-26 全部 200）：`active`、`flagged`、`pending`、`deleted`、`any`、`modqueue`；已删除帖必须带 `status:deleted`/`status:any` 才出现在结果里
+- `type:` 实测合法值：`jpg`、`png`、`gif`、`webm`、`mp4`、`swf`（swf 在 app 端视为不可显示并被过滤）
+- `rating:` 合法值：`s`（safe）、`q`（questionable）、`e`（explicit）
 - `date:`：`date:today` / `date:week` / `date:<…` / `date:>…` / `date:…`（当天）、范围 `2020-01..2020-06`
-- `order:`：id / id_asc / id_desc / score / score_asc / favcount / favcount_asc / comment_count / random…（几乎都可用 `_asc` 或 `-` 反转）；**`order:random` 服务端整库洗牌极慢，禁止用于信息流**（app 的"随便看看"页因此被删）；要可复现配 `randseed:123`
+- `order:` 全量实测（2026-11-26，全部 200）：`id`、`id_asc`、`id_desc`、`score`、`score_asc`、`favcount`、`favcount_asc`、`comment_count`、`comment_count_asc`、`comment_bumped`、`new`、`none`、`random`、`rank`、`hot`；数值型几乎都可用 `_asc` 反转；**`order:random` 服务端整库洗牌极慢，禁止用于信息流**（app 的"随便看看"页因此被删）；要可复现配 `randseed:123`
 - `fav:me` / `fav:用户名`：收藏夹隐藏的用户返回 `{"success":false,"reason":"Access Denied: …"}`（**不是 posts 数组**，解析必须能容）
 - `id:1,2,3` 逗号列表按 id 查；`pool:<id>`；`type:jpg/png/gif/webm/...`
 - `~` 与通配符组合的坑：`~african_*` 会把通配符展开成前 40 个匹配 tag 加入列表；`~*_cat` 按字面加入等于失效；否定通配符 `-african_*` 无数量限制
@@ -83,7 +86,7 @@ rg -n -i "post_count|name_matches" Temp/api_doc.txt
 
 | 端点 | 要点 |
 | --- | --- |
-| `GET /posts.json` | 顶层数组；app 传 `v2=true&mode=extended` 兼容新旧节点。响应为 v2 结构（`files.*` / `stats.*` / `has.*`，`tags` 在 extended 模式下按类别分组）；`mode` 省略时 `tags` 是扁平数组。limit ≤320；已删除帖要 `status:deleted`/`status:any` 才返回（2026-11-26 实测） |
+| `GET /posts.json` | 顶层数组。**v2 结构已是默认**（2026-11-26 实测 `v2=false` 也返回 `files.*`，旧 `file` 键不复存在）；`v2=true` 仅为仍回 v1 的节点兜底。`mode=extended` 让 `tags` 按类别分组（general/artist/…/lore 九类），省略则为扁平数组。limit ≤320（硬上限）；数字页 ≤750，批量遍历用游标 `page=b<最低id>`（**`page=a/b` 强制 `order:id_desc`**）；已删除帖要 `status:deleted`/`status:any` 才返回。app 侧 `_search` 已做 limit clamp 与 page guard（`PostSearchUrlCodec.maxLimit/maxNumberedPage`） |
 | `GET /posts/{id}.json` | app 传 `v2=true&mode=extended`；返回裸 post 对象（v2 结构，不再包 `{post: {...}}`；2026-11-26 实测） |
 | `GET /favorites.json` | **必须带认证，否则 404**；返回 `{posts: [...]}` |
 | `POST /posts/{id}/votes.json` | `score=1|-1&no_unvote=true` |
@@ -94,6 +97,7 @@ rg -n -i "post_count|name_matches" Temp/api_doc.txt
 | `GET /forum_topics.json` | `search[order]` 只有 `id_asc|id_desc|sticky`；**省略 = 最新回复序**（updated_at 降序）——别发明 last_reply 排序 |
 | `GET /wiki_pages.json` | `search[title]` |
 | `GET /status.json` | 站点可用性探测 |
+| `GET /posts?tags=…`（网页） | 搜索的规范网页 URL：`tags`（+ 可选 `limit`/`page`）；app 内 `PostSearchUrlCodec`（`lib/post/data/search_url.dart`）双向编解码：出站分享生成规范 URL（默认页大小 75 与第 1 页省略），入站解析兼容 `search[tags]` 新拼写并 clamp limit/丢弃非法数字页 |
 
 站点 tag category 数值（`search[category]` 传参与响应 `category` 字段）：**0 general、1 artist、2 contributor、3 copyright、4 character、5 species、6 invalid、7 meta、8 lore**。
 app 内 `TagCategory` 枚举顺序与之**不一致**（general, species, character, copyright, meta, lore, artist, contributor, invalid）——传参用上表站点值，**不要用 `TagCategory.index`**。

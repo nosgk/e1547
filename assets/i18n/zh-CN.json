@@ -521,6 +521,7 @@
   "Settings": {"en": "Settings", "zh": "设置", "ctx": "settings page title / drawer entry"},
   "Severe failure in biometric authentication": {"en": "Severe failure in biometric authentication", "zh": "生物识别认证发生严重错误", "ctx": "生物识别异常 snackbar"},
   "Share": {"en": "Share", "zh": "分享", "ctx": "菜单项 / tooltip"},
+  "Share search": {"en": "Share search", "zh": "分享搜索", "ctx": "搜索页应用栏按钮：把当前搜索复制/分享为 e621 网页链接"},
   "Show": {"en": "Show", "zh": "显示", "ctx": "api key visibility tooltip"},
   "Show original": {"en": "Show original", "zh": "显示原文", "ctx": "仅译文模式下恢复原文的按钮"},
   "Show the original and the translation": {"en": "Show the original and the translation", "zh": "双语显示", "ctx": "翻译显示模式：双语"},
@@ -630,6 +631,7 @@
   "Updated": {"en": "Updated", "zh": "更新时间", "ctx": "图集/维基信息行标签"},
   "Updated post #{id}": {"en": "Updated post #{id}", "zh": "已更新帖子 #{id}", "ctx": "编辑提交成功 snackbar；{id}=帖子 id"},
   "Upload date": {"en": "Upload date", "zh": "上传日期", "ctx": "帖子排序值"},
+  "Uploads": {"en": "Uploads", "zh": "上传", "ctx": "用户搜索结果页标题：查看某用户的上传"},
   "Upvote favorites": {"en": "Upvote favorites", "zh": "收藏时点赞", "ctx": "settings switch"},
   "Use PIN": {"en": "Use PIN", "zh": "使用 PIN", "ctx": "锁屏切换到 PIN 输入的按钮"},
   "Use it": {"en": "Use it", "zh": "就用它", "ctx": "万能摇奖机结果操作"},
@@ -839,5 +841,6 @@
   "{level} and above": {"en": "{level} and above", "zh": "{level} 及以上", "ctx": "日志录制副标题；{level}=级别显示名"},
   "{percent} syncing follows...": {"en": "{percent} syncing follows...", "zh": "正在同步关注... {percent}", "ctx": "强制同步进行中；{percent}=百分比"},
   "{size} · {count} items": {"en": "{size} · {count} items", "zh": "已占用 {size} · {count} 项", "ctx": "媒体缓存占用统计；{size}=容量文本，{count}=条目数"},
+  "{uploader}'s Uploads": {"en": "{uploader}'s Uploads", "zh": "{uploader} 的上传", "ctx": "用户搜索结果页标题；{uploader}=用户名"},
   "{used} / {limit}": {"en": "{used} / {limit}", "zh": "已用 {used} / 上限 {limit}", "ctx": "媒体缓存进度条说明；{used}=已用容量，{limit}=上限容量"}
 }

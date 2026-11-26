@@ -316,7 +316,11 @@ class _TranslatableHostState extends State<TranslatableHost> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _entry ??= _create();
+    // Skeleton placeholder pages carry random ghost text; translating it
+    // would fire requests for noise that is replaced moments later.
+    if (!isSkeleton(context)) {
+      _entry ??= _create();
+    }
   }
 
   @override
@@ -336,9 +340,15 @@ class _TranslatableHostState extends State<TranslatableHost> {
 
   @override
   Widget build(BuildContext context) {
+    final TranslationEntry? entry = _entry;
+    if (entry == null) {
+      // Still inside a skeleton: render through a placeholder entry whose
+      // original text shows as-is and never triggers a request.
+      return widget.builder(context, TranslationEntry(text: widget.text));
+    }
     return AnimatedBuilder(
-      animation: _entry!,
-      builder: (context, child) => widget.builder(context, _entry!),
+      animation: entry,
+      builder: (context, child) => widget.builder(context, entry),
     );
   }
 }

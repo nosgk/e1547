@@ -137,9 +137,11 @@ class TranslatedTagText extends StatelessWidget {
       builder: (context, _) {
         // The scope toggle, when present, overrides the global setting so
         // switching it off always hides (and stops) the page's tag
-        // translations.
+        // translations. Skeleton placeholder pages carry random ghost tags;
+        // translating them would fire requests for noise.
         final active =
             settings.translateEnabled.value &&
+            !isSkeleton(context) &&
             (scope?.value ?? settings.translateTagsAuto.value);
         if (!active) return _plain(context);
         return TranslatableHost(

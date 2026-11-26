@@ -47,22 +47,38 @@ class PostClient {
     int? limit,
     QueryMap? query,
     CancelToken? cancelToken,
-  }) => dio
-      .get(
-        '/posts.json',
-        queryParameters: {
-          'page': page,
-          'limit': limit,
-          'v2': true,
-          'mode': 'extended',
-          ...?query,
-        }.toQuery(),
-        cancelToken: cancelToken,
-      )
-      .then(
-        (response) =>
-            (response.data as List).map<Post>(E621Post.fromJson).toList(),
+  }) {
+    // Incoming guardrails (docs/e621-api.md §2): the API hard-caps the page
+    // size at 320 and rejects numbered pages past 750 — bulk iteration has
+    // to use the `page=b<id>` cursor instead. Clamping here keeps every
+    // call site legal by construction.
+    final int? safePage = page;
+    if (safePage != null && safePage > PostSearchUrlCodec.maxNumberedPage) {
+      throw ArgumentError.value(
+        safePage,
+        'page',
+        'numbered pages above '
+            '${PostSearchUrlCodec.maxNumberedPage} are rejected by the API; '
+            'paginate with the page=b<id> cursor instead',
       );
+    }
+    return dio
+        .get(
+          '/posts.json',
+          queryParameters: {
+            'page': safePage,
+            'limit': limit?.clamp(1, PostSearchUrlCodec.maxLimit),
+            'v2': true,
+            'mode': 'extended',
+            ...?query,
+          }.toQuery(),
+          cancelToken: cancelToken,
+        )
+        .then(
+          (response) =>
+              (response.data as List).map<Post>(E621Post.fromJson).toList(),
+        );
+  }
 
   /// Total posts matching [tags], from `/posts/count.json`. The server caps
   /// the reported count at ~240k (`capped` marks that truncation); bare

@@ -226,9 +226,12 @@ extension LinkOnTapExtension on LinkParser {
         if (id != null) {
           return navWrapper((context) => PostLoadingPage(id));
         }
+        // The web URL of a search (tags/limit/page, either the classic or
+        // the search[...] spelling) decodes into the initial feed params.
+        final PostSearchUrl search = PostSearchUrlCodec.parseLink(result.query);
         return navWrapper(
           (context) =>
-              PostsPage(params: PostParams(tags: result.query?['tags'])),
+              PostsPage(params: PostParams(tags: search.toParamsTags())),
         );
       case LinkType.pool:
         int? id = result.id as int?;

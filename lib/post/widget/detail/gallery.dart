@@ -100,6 +100,13 @@ class _PostDetailGalleryState extends State<PostDetailGallery>
             child: PagedPageView(
               pageController: pageController,
               state: state.paging,
+              // A covered gallery route still receives filter notifications
+              // and rebuilds; its keepalive page children then enter the
+              // semantics walk without geometry and crash the framework
+              // (see docs/upstream-merge-2026-11.md R1). Dropping keepalive
+              // lets the pager dispose covered pages instead. Page state is
+              // cheap to rebuild here: posts come from the query cache.
+              addAutomaticKeepAlives: false,
               fetchNextPage: query.getNextPage,
               builderDelegate: defaultPagedChildBuilderDelegate<Post>(
                 onRetry: query.getNextPage,
