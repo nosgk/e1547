@@ -49,9 +49,9 @@
 
 | # | 风险 | 状态 |
 | --- | --- | --- |
-| R1 | **已确证为合并回归（CI 3.47.4 与本地 3.47.2 均复现）**：`test/post/widget/route_test.dart` 的 "a blacklisted post has a show button" 在点击 show 后触发框架语义树空值崩溃。崩溃链：`flushSemantics` → `_produceSemanticsNode/_buildSemanticsSubtree` 对某个 `geometry == null` 的脏节点取 `geometry!`（object.dart:6411/6271）。逐模块叠加二分（upstream + fork 各模块）确认崩溃来自 fork 代码的某种组合而非单文件；单文件还原（filter/likes/appbar/loading/image/tile/video/description/tag-card）均不能消除。场景特征：两条路由（画廊 PagedPageView + 被 push 的详情）共享同一 PostFilter，点击 show 触发跨路由通知重建时，覆盖路由下被缓存的语义子树进入脏队列但无几何。**仅测试绑定受影响**：生产语义树默认关闭，普通使用无影响；开启无障碍（TalkBack）时理论可触。 | 未修；已尝试 ExcludeSemantics 包裹（因包裹层不随 filter 通知重建而未生效）与 `addSemanticIndexes:false`（渲染对象来自更早帧缓存，仍崩溃）。后续方向：让画廊路由响应路由遮挡状态重建，或向上游报告框架语义遍历缺陷 |
+| R1 | ~~合并回归~~ **已修复（2026-11-26 晚，`498bb4ca`）**：框架插桩（`debugCreator` 链）锁定崩溃对象为画廊 `PagedPageView` 的 keepalive 页面包装（`AutomaticKeepAlive` + `_SelectionKeepAlive`）：被覆盖路由收到共享 `PostFilter` 通知重建后，keepalive 缓存的页面进入语义遍历队列却无几何（`geometry!` 空值）。**修复**：`lib/post/widget/detail/gallery.dart` 分页器设 `addAutomaticKeepAlives: false`，覆盖后页面正常 dispose。代价：远处页面滑动返回时重建（数据来自查询缓存，成本可忽略）；受影响仅页内滚动位置等瞬态。曾试 `addSemanticIndexes:false`（无效——节点来自更早帧缓存）与 `ExcludeSemantics` 包裹（无效——包裹层不随 filter 通知重建），均已还原。 | ✅ 已修复并验证（全套 679 项测试通过） |
 | R2 | 网格 GIF/视频自动播放预览在取消静音后可能出声（C11） | 已知边缘，后续按需修复（预览监听服务通知重设音量） |
-| R3 | 骨架占位数据（Ghost）的随机标签/描述可能被标签翻译当作真内容请求 | `TranslatedTagText` 有 `isSkeleton` 场景待加闸门，本轮未做 |
+| R3 | 骨架占位数据（Ghost）的随机标签/描述可能被标签翻译当作真内容请求 | ✅ 已修复：`TranslatedTagText` 加 `isSkeleton` 闸门；`TranslatableHost` 在骨架内不创建翻译条目，渲染纯占位 entry（不发起请求） |
 | R4 | fork 设置页新增项与上游新开关并存后，设置页长度显著增加 | 观感问题，后续轮按 UI 反馈调整 |
 
 ## 六、合并统计
@@ -60,3 +60,4 @@
 - 双方都改 117 文件：60 冲突、56 静默自动合并（已抽查语义）、1 无需合并
 - fork 独有 116 文件全部存活；删除仅限 `lib/user/data/batch.dart`、`test/user/data/batch_test.dart`（被上游原生方案替代）与上游侧删除项
 - 测试：671 项，670 过 1 失败（R1，本地与 CI 3.47.4 均复现）；`flutter analyze` 0 issue
+- R1 修复后（`498bb4ca`）：**679 项测试全绿**（新增 URL codec 7 项 + 上游随带新增），`flutter analyze` 0 issue
