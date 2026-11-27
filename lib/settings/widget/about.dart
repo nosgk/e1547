@@ -16,8 +16,6 @@ class AboutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final client = context.watch<AppInfoClient?>();
     final versions = client?.useNewVersions();
-    final bundledDonors = client?.useBundledDonors();
-    final donors = client?.useDonors();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -27,11 +25,7 @@ class AboutPage extends StatelessWidget {
       body: LimitedWidthLayout.builder(
         builder: (context) => PullToRefresh(
           onRefresh: () async {
-            await Future.wait([
-              ?versions?.invalidate(),
-              ?bundledDonors?.invalidate(),
-              ?donors?.invalidate(),
-            ]);
+            await Future.wait([?versions?.invalidate()]);
           },
           child: ListView(
             padding: LimitedWidthLayout.of(context).padding,
@@ -48,16 +42,6 @@ class AboutPage extends StatelessWidget {
                       AboutVersion(newVersions: versions),
                       const AboutLinks(),
                     ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Card(
-                  child: AboutDonations(
-                    bundledDonors: bundledDonors,
-                    donors: donors,
                   ),
                 ),
               ),
@@ -365,74 +349,6 @@ class AboutLinks extends StatelessWidget {
           extra: AppInfo.instance.packageName,
         ),
       ],
-    );
-  }
-}
-
-class AboutDonations extends StatelessWidget {
-  const AboutDonations({super.key, this.bundledDonors, this.donors});
-
-  final Query<List<Donor>>? bundledDonors;
-  final Query<List<Donor>>? donors;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget section(
-      QueryState<List<Donor>>? assetDonations,
-      QueryState<List<Donor>>? githubDonations,
-    ) {
-      List<Donor>? donors = githubDonations?.data ?? assetDonations?.data;
-
-      if ((githubDonations?.isError ?? false) &&
-          (assetDonations?.isError ?? false)) {
-        return IconMessage(
-          icon: const Icon(Icons.warning_amber),
-          title: Text('Failed to fetch donors'.tr),
-        );
-      }
-
-      if (donors?.isEmpty ?? false) {
-        return const SizedBox();
-      }
-
-      return Column(
-        children: [
-          ListTile(
-            title: Text('Donors'.tr),
-            leading: const FaIcon(FontAwesomeIcons.handHoldingHeart),
-            subtitle: Text('Thanks for helping me keep up development!'.tr),
-          ),
-          const Divider(),
-          const SizedBox(height: 8),
-          if (donors == null)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(8),
-                child: HexagonalLoadingIndicator(),
-              ),
-            )
-          else if (donors.isEmpty)
-            // I dont like whining about no donors
-            ListTile(
-              title: Text('No donors yet'.tr),
-              leading: const FaIcon(FontAwesomeIcons.heartCrack),
-            )
-          else
-            Donors(donors: donors),
-        ],
-      );
-    }
-
-    final bundled = bundledDonors;
-    final remote = donors;
-    if (bundled == null || remote == null) return section(null, null);
-    return QueryBuilder(
-      query: bundled,
-      builder: (context, assetDonations) => QueryBuilder(
-        query: remote,
-        builder: (context, githubDonations) =>
-            section(assetDonations, githubDonations),
-      ),
     );
   }
 }

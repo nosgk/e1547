@@ -49,6 +49,15 @@ class PostDetailVideo extends StatelessWidget {
                 ),
               ),
             ),
+          // Always-visible draggable seek bar; the fullscreen bar remains
+          // the place for frame stepping and capture.
+          if (player != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: InlineVideoBar(player: player),
+            ),
         ],
       ),
     );

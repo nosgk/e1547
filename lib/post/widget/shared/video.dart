@@ -331,6 +331,153 @@ class _VideoBarState extends State<VideoBar> {
   }
 }
 
+/// Compact always-visible seek bar for inline (non-fullscreen) players:
+/// a draggable progress slider with elapsed and total time. Lives at the
+/// bottom edge of the video so it does not fight the center play button.
+class InlineVideoBar extends StatefulWidget {
+  const InlineVideoBar({super.key, required this.player});
+
+  final VideoPlayer player;
+
+  @override
+  State<InlineVideoBar> createState() => _InlineVideoBarState();
+}
+
+class _InlineVideoBarState extends State<InlineVideoBar> {
+  bool seeking = false;
+  Duration position = Duration.zero;
+  Duration duration = Duration.zero;
+  Duration buffer = Duration.zero;
+
+  List<StreamSubscription> subscriptions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(covariant InlineVideoBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.player == widget.player) return;
+    for (final s in subscriptions) {
+      s.cancel();
+    }
+    subscriptions.clear();
+    _subscribe();
+  }
+
+  void _subscribe() {
+    position = widget.player.state.position;
+    duration = widget.player.state.duration;
+    buffer = widget.player.state.buffer;
+    subscriptions.addAll([
+      widget.player.stream.completed.listen((event) {
+        if (mounted) {
+          setState(() => position = Duration.zero);
+        }
+      }),
+      widget.player.stream.position.listen((event) {
+        if (!mounted || seeking) return;
+        if (position.inSeconds == event.inSeconds &&
+            (event - position).inMilliseconds.abs() < 250) {
+          return;
+        }
+        setState(() => position = event);
+      }),
+      widget.player.stream.duration.listen((event) {
+        if (mounted) setState(() => duration = event);
+      }),
+      widget.player.stream.buffer.listen((event) {
+        if (mounted) setState(() => buffer = event);
+      }),
+    ]);
+  }
+
+  @override
+  void dispose() {
+    for (final s in subscriptions) {
+      s.cancel();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double max = duration.inMilliseconds.toDouble();
+    if (max <= 0) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        height: 28,
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                videoTime(position),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shadows: const [Shadow(blurRadius: 4)],
+                ),
+              ),
+            ),
+            Expanded(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 2.5,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 12,
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
+                child: Slider(
+                  max: max,
+                  value: position.inMilliseconds.toDouble().clamp(0.0, max),
+                  secondaryTrackValue: buffer.inMilliseconds.toDouble().clamp(
+                    0.0,
+                    max,
+                  ),
+                  onChangeStart: (e) {
+                    setState(() => seeking = true);
+                    widget.player.pause();
+                  },
+                  onChanged: (e) {
+                    setState(() => position = Duration(milliseconds: e ~/ 1));
+                  },
+                  onChangeEnd: (e) async {
+                    await widget.player.seek(Duration(milliseconds: e ~/ 1));
+                    await widget.player.play();
+                    if (mounted) {
+                      setState(() => seeking = false);
+                    }
+                  },
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                videoTime(duration),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shadows: const [Shadow(blurRadius: 4)],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 const Duration videoSeekStep = Duration(seconds: 10);
 
 Duration videoSeekTarget({
