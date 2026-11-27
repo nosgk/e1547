@@ -190,54 +190,10 @@ class _VideoBarState extends State<VideoBar> {
     super.dispose();
   }
 
-  Duration _frameStep() {
-    final double? fps = widget.player.state.tracks.video
-        .map((track) => track.fps)
-        .whereType<double>()
-        .where((fps) => fps > 1 && fps < 240)
-        .firstOrNull;
-    final int micros = ((1000000 / (fps ?? 24)).round()).clamp(1000, 200000);
-    return Duration(microseconds: micros);
-  }
+  Future<void> _stepFrame(int direction) =>
+      stepVideoFrame(widget.player, direction);
 
-  Future<void> _stepFrame(int direction) async {
-    final Duration current = widget.player.state.position;
-    final Duration target = videoSeekTarget(
-      position: current,
-      duration: widget.player.state.duration,
-      offset: _frameStep() * direction,
-    );
-    if (target == current) return;
-    await widget.player.pause();
-    await widget.player.seek(target);
-  }
-
-  Future<void> _saveFrame() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final Uint8List? bytes = await widget.player.screenshot(
-      format: 'image/png',
-    );
-    if (!mounted || bytes == null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Could not capture frame'.tr)),
-      );
-      return;
-    }
-    final File file = File(
-      '${Directory.systemTemp.path}${Platform.pathSeparator}e1547-frame-${DateTime.now().millisecondsSinceEpoch}.png',
-    );
-    await file.writeAsBytes(bytes, flush: true);
-    try {
-      await FileDownloader.downloadImage(file: file, directory: null);
-      messenger.showSnackBar(SnackBar(content: Text('Frame saved'.tr)));
-    } on FileDownloadException {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Could not save frame'.tr)),
-      );
-    } finally {
-      if (file.existsSync()) await file.delete();
-    }
-  }
+  Future<void> _saveFrame() => saveVideoFrame(context, widget.player);
 
   @override
   Widget build(BuildContext context) {
@@ -409,72 +365,157 @@ class _InlineVideoBarState extends State<InlineVideoBar> {
     if (max <= 0) return const SizedBox.shrink();
     return Align(
       alignment: Alignment.bottomCenter,
-      child: SizedBox(
-        height: 28,
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text(
-                videoTime(position),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  shadows: const [Shadow(blurRadius: 4)],
-                ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: 'Previous frame'.tr,
+                visualDensity: VisualDensity.compact,
+                iconSize: 18,
+                color: Colors.white.withValues(alpha: 0.9),
+                icon: const Icon(Icons.skip_previous),
+                onPressed: () => stepVideoFrame(widget.player, -1),
               ),
-            ),
-            Expanded(
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 2.5,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
-                  ),
-                  overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 12,
-                  ),
-                  padding: EdgeInsets.zero,
-                ),
-                child: Slider(
-                  max: max,
-                  value: position.inMilliseconds.toDouble().clamp(0.0, max),
-                  secondaryTrackValue: buffer.inMilliseconds.toDouble().clamp(
-                    0.0,
-                    max,
-                  ),
-                  onChangeStart: (e) {
-                    setState(() => seeking = true);
-                    widget.player.pause();
-                  },
-                  onChanged: (e) {
-                    setState(() => position = Duration(milliseconds: e ~/ 1));
-                  },
-                  onChangeEnd: (e) async {
-                    await widget.player.seek(Duration(milliseconds: e ~/ 1));
-                    await widget.player.play();
-                    if (mounted) {
-                      setState(() => seeking = false);
-                    }
-                  },
-                ),
+              IconButton(
+                tooltip: 'Save frame'.tr,
+                visualDensity: VisualDensity.compact,
+                iconSize: 18,
+                color: Colors.white.withValues(alpha: 0.9),
+                icon: const Icon(Icons.photo_camera_outlined),
+                onPressed: () => saveVideoFrame(context, widget.player),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text(
-                videoTime(duration),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  shadows: const [Shadow(blurRadius: 4)],
-                ),
+              IconButton(
+                tooltip: 'Next frame'.tr,
+                visualDensity: VisualDensity.compact,
+                iconSize: 18,
+                color: Colors.white.withValues(alpha: 0.9),
+                icon: const Icon(Icons.skip_next),
+                onPressed: () => stepVideoFrame(widget.player, 1),
               ),
+            ],
+          ),
+          SizedBox(
+            height: 28,
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    videoTime(position),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shadows: const [Shadow(blurRadius: 4)],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 2.5,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 6,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 12,
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Slider(
+                      max: max,
+                      value: position.inMilliseconds.toDouble().clamp(0.0, max),
+                      secondaryTrackValue: buffer.inMilliseconds
+                          .toDouble()
+                          .clamp(0.0, max),
+                      onChangeStart: (e) {
+                        setState(() => seeking = true);
+                        widget.player.pause();
+                      },
+                      onChanged: (e) {
+                        setState(
+                          () => position = Duration(milliseconds: e ~/ 1),
+                        );
+                      },
+                      onChangeEnd: (e) async {
+                        await widget.player.seek(
+                          Duration(milliseconds: e ~/ 1),
+                        );
+                        await widget.player.play();
+                        if (mounted) {
+                          setState(() => seeking = false);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    videoTime(duration),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shadows: const [Shadow(blurRadius: 4)],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+/// Per-frame seek distance derived from the video's fps (falls back to 24).
+Duration videoFrameStep(VideoPlayer player) {
+  final double? fps = player.state.tracks.video
+      .map((track) => track.fps)
+      .whereType<double>()
+      .where((fps) => fps > 1 && fps < 240)
+      .firstOrNull;
+  final int micros = ((1000000 / (fps ?? 24)).round()).clamp(1000, 200000);
+  return Duration(microseconds: micros);
+}
+
+/// Pauses [player] and seeks by one frame in [direction].
+Future<void> stepVideoFrame(VideoPlayer player, int direction) async {
+  final Duration current = player.state.position;
+  final Duration target = videoSeekTarget(
+    position: current,
+    duration: player.state.duration,
+    offset: videoFrameStep(player) * direction,
+  );
+  if (target == current) return;
+  await player.pause();
+  await player.seek(target);
+}
+
+/// Captures the current frame as a PNG and saves it through the downloader.
+Future<void> saveVideoFrame(BuildContext context, VideoPlayer player) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final Uint8List? bytes = await player.screenshot(format: 'image/png');
+  if (bytes == null) {
+    messenger.showSnackBar(
+      SnackBar(content: Text('Could not capture frame'.tr)),
+    );
+    return;
+  }
+  final File file = File(
+    '${Directory.systemTemp.path}${Platform.pathSeparator}e1547-frame-${DateTime.now().millisecondsSinceEpoch}.png',
+  );
+  await file.writeAsBytes(bytes, flush: true);
+  try {
+    await FileDownloader.downloadImage(file: file, directory: null);
+    messenger.showSnackBar(SnackBar(content: Text('Frame saved'.tr)));
+  } on FileDownloadException {
+    messenger.showSnackBar(SnackBar(content: Text('Could not save frame'.tr)));
+  } finally {
+    if (file.existsSync()) await file.delete();
   }
 }
 

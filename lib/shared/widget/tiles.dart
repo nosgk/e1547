@@ -56,27 +56,33 @@ class TileLayout extends StatelessWidget {
       valueListenable: context.watch<Settings>().tileSize,
       builder: (context, tileSize, child) => ValueListenableBuilder<GridQuilt>(
         valueListenable: context.watch<Settings>().quilt,
-        builder: (context, stagger, child) => LayoutBuilder(
-          builder: (context, constraints) {
-            tileSize = this.tileSize ?? tileSize;
-            stagger = this.stagger ?? stagger;
-            int crossAxisCount = max(
-              1,
-              constraints.maxWidth / tileSize,
-            ).round();
-            int mainAxisCount = max(
-              1,
-              constraints.maxHeight / tileSize,
-            ).round();
-            return TileLayoutData(
-              tileHeightFactor: tileHeightFactor,
-              tileSize: tileSize,
-              mainAxisCount: mainAxisCount,
-              crossAxisCount: crossAxisCount,
-              stagger: stagger,
-              child: this.child,
-            );
-          },
+        builder: (context, stagger, child) => ValueListenableBuilder<int>(
+          valueListenable: context.watch<Settings>().gridColumns,
+          builder: (context, gridColumns, child) => LayoutBuilder(
+            builder: (context, constraints) {
+              tileSize = this.tileSize ?? tileSize;
+              stagger = this.stagger ?? stagger;
+              // A fixed column count overrides the tile-size-derived one;
+              // the main axis always follows the tile size.
+              int? fixed = gridColumns > 0 ? gridColumns : null;
+              int crossAxisCount = max(
+                1,
+                fixed ?? (constraints.maxWidth / tileSize).round(),
+              );
+              int mainAxisCount = max(
+                1,
+                constraints.maxHeight / tileSize,
+              ).round();
+              return TileLayoutData(
+                tileHeightFactor: tileHeightFactor,
+                tileSize: tileSize,
+                mainAxisCount: mainAxisCount,
+                crossAxisCount: crossAxisCount,
+                stagger: stagger,
+                child: this.child,
+              );
+            },
+          ),
         ),
       ),
     );

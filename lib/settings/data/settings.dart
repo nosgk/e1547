@@ -49,6 +49,12 @@ class Settings extends NotifiedSettings {
     values: GridQuilt.values,
   );
 
+  /// Fixed column count for post grids; 0 follows the tile size (auto).
+  late final ValueNotifier<int> gridColumns = createSetting(
+    key: 'gridColumns',
+    initialValue: 0,
+  );
+
   late final ValueNotifier<bool> filterUnseenFollows = createSetting(
     key: 'filterUnseenFollows',
     initialValue: false,

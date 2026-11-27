@@ -352,7 +352,6 @@ class SettingsPage extends StatelessWidget {
                             title: Text('Tile size'.tr),
                             value: NumberRange(value),
                             initialMode: RangeDialogMode.exact,
-                            enforceMax: false,
                             canChangeMode: false,
                             division: (300 / 50).round(),
                             min: 100,
@@ -372,6 +371,35 @@ class SettingsPage extends StatelessWidget {
                       builder: (context, value, child) => GridSettingsTile(
                         state: value,
                         onChange: (value) => settings.quilt.value = value,
+                      ),
+                    ),
+                    ValueListenableBuilder<int>(
+                      valueListenable: settings.gridColumns,
+                      builder: (context, value, child) => ListTile(
+                        title: Text('Grid columns'.tr),
+                        subtitle: Text(
+                          value > 0
+                              ? value.toString()
+                              : 'follow the tile size'.tr,
+                        ),
+                        leading: const Icon(Icons.view_column_outlined),
+                        onTap: () => showDialog(
+                          context: context,
+                          builder: (context) => RangeDialog(
+                            title: Text('Grid columns'.tr),
+                            value: NumberRange(value),
+                            initialMode: RangeDialogMode.exact,
+                            enforceMax: false,
+                            canChangeMode: false,
+                            max: 8,
+                            onSubmit: (value) {
+                              if (value == null || value.value < 0) {
+                                return;
+                              }
+                              settings.gridColumns.value = value.value;
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ],
